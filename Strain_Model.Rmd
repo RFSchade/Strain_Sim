@@ -25,13 +25,22 @@ pacman::p_load(pacman, tidyverse)
 agent_frame <- tibble("agent" = 1:3, "sucess" = 0, "effort" = 1, "reward" = 1, "mental_health" = reward/effort)
 project_specs <- 0
 model_specs <- 2
+sprint_turn <- 1
+
+#----
+
+# if first tun in sprint: 
+
 
 #SpecScheck()
 #----
-diff <- abs(project_specs - model_specs)
-if(diff >= 4){
+spec_diff <- abs(project_specs - model_specs)
+if(spec_diff >= 4){
   agent_frame$reward <- agent_frame$reward - 4
+  model_specs <- model_specs
 }
+
+#----
 
 #Work()
 #---- 
@@ -48,7 +57,32 @@ if(colab == "sucess"){
  agent_frame[1,4] <- agent_frame[1,4]/agent_frame[1,3]
 }
 
+#----
 
+# SpecChange()
+#----
+spec_chance <- sample(c("none", "positive", "negative"), 1, prob = c(0.8, 0.1, 0.1))
+if(spec_change == "positive"){
+  project_specs <- project_specs + 1
+}
+if(spec_change == "negative"){
+  project_specs <- project_specs - 1
+}
+
+#----
+
+# SprintTurn()
+#----
+sprint_turn <- sprint_turn + 1
+if(sprint_turn == 10){
+  if(model_specs > project_specs){
+    model_specs <- model_specs - 1
+  }
+  if(model_specs < project_specs){
+    model_specs <- model_specs + 1
+  }
+  sprint_turn == 0
+}
 ```
 
 
