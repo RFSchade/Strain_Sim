@@ -166,12 +166,14 @@ values <- Sprint(10, values)
 Specs() checks for drift in specifications and imposes a penalty on the simulation if the drift is over a certain threshold. It also chnages the specifications.
 
 threshold = the max distance agent_specs can drift from model_specs
+array = array containing information about agents
+df = dataframe with information not connected to a specific agent
 
 ```{r}
 # Variables needed to run the function
 values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
 
-Specs <- function(threshold, agent_frame, values){
+Specs <- function(threshold, array, df){
   # Checking if agent_specs has drifted
   spec_drift <- abs(values$project_specs - values$agent_specs)
   # This happens if agent_specs has drifted
