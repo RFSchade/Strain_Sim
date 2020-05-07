@@ -85,6 +85,170 @@ if(sprint_turn == 10){
 }
 ```
 
+## Simulation() function
+
+The Simulation() function gethers all the Work(), Sprint() and Specs() functions to comute the agent based model. 
+
+n_turns = the number of turns simulated 
+n_agent = the number of agents
+
+```{r}
+Simulation <- function(n_turns, n_agent){
+  # two dataframes, one for agent information and one for additional variables, are defined.
+  values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
+  agent_frame <- tibble("agent" = 1:n_agent, "sucess" = 0, "effort" = 1, "reward" = 1, "mental_health" = reward/effort)
+  
+  # For loop for repeating repeating the same procedure for several tuns
+  for(i in 1:n_turns){
+    # work is siulated and agent_frame is updated
+    agent_frame <- Work(0.75, agent_frame)
+    # Sprints are simulated and values are udpated 
+    values <- Sprint(10, values)
+    # Spacs are changed and both agent_frame and values are updated
+    both <- Specs(4, agent_frame, values)
+    values <- both[[1]]
+    agent_frame <- both[[2]]
+    print(agent_frame)
+  }
+  
+  return(list(values, agent_frame))
+}
+
+# Testing function
+twodf <- Simulation(10,3)
+twodf[[2]]
+
+```
+
+
+
+## Work() function 
+
+The Work() function simulates the agents working on the project. It is used in all conditions. 
+
+colab_prob = the defaoult probablility of a sucessful collaboration (ie. not modefied by mental health yet)
+
+```{r}
+# this should work as long as I have an agent_frame defined
+
+Work <- function(colab_prob,agents) {
+  
+  # For loop repeating for each participant
+  for(i in agents$agent){
+    
+    # Defining the probability of a sucessful collaboration
+    s_prob <- colab_prob*agents[i,5]
+    
+    # Determining if the collaboration is sucessful
+    colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
+    
+    # Simulating collaboration
+    if(colab == "sucess"){
+      agents[i,2] <- agents[i,2] + 1
+      agents[i,3] <- agents[i,3] + 1
+      agents[i,4] <- agents[i,4] + 1
+      agents[i,5] <- agents[i,4]/agents[i,3]
+    } else {
+    agents[i,3] <- agents[i,3] + 1 
+    agents[i,5] <- agents[i,4]/agents[i,3]
+    }
+  }
+  
+  # Retuning the modifyed dataframe
+  return(agents)
+  
+}
+
+
+# Test of function 
+agent_frame <- tibble("agent" = 1:3, "sucess" = 0, "effort" = 1, "reward" = 1, "mental_health" = reward/effort)
+agent_frame <- Work(0.75)
+# It worked
+
+
+```
+
+
+## Sprint() Function
+
+Sprint() keeps track of the sprints and changes the model specifications in the Complex condition. It is only used in the Scrum conditions. It should happen at the end of a loop. 
+
+len = the length of the sprint in turns.  
+
+```{r}
+# Variables needed to run the function
+values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
+
+Sprint <- function(len, values){
+  # Advancing in the sprint
+  values$sprint_turn <- values$sprint_turn + 1
+  
+  # This happens at the last turn of the sprint
+  if(values$sprint_turn == len){
+    # agent_specs moves closer to project_specs if agent_specs is greater  
+    if(values$agent_specs > values$project_specs){
+      values$agent_specs <- values$agent_specs - 1
+    }
+    # agent_specs moves closer to project_specs if agent_specs is smaller
+    if(values$agent_specs < values$project_specs){
+      values$agent_specs <- values$agent_specs + 1
+    }
+    # Sprint resets
+    values$sprint_turn <- 0
+  }
+  
+  # Function returns changed agent_specs and sprint_turn
+  return(values)
+}
+
+# Test of function
+values <- Sprint(10, values)
+# It works
+
+
+```
+
+## Specs() function
+
+Specs() checks for drift in specifications and imposes a penalty on the simulation if the drift is over a certain threshold. It also chnages the specifications.
+
+threshold = the max distance agent_specs can drift from model_specs
+
+```{r}
+# Variables needed to run the function
+values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
+
+Specs <- function(threshold, agent_frame, values){
+  # Checking if agent_specs has drifted
+  spec_drift <- abs(values$project_specs - values$agent_specs)
+  # This happens if agent_specs has drifted
+  if(spec_drift >= threshold){
+    # Penalty 
+    agent_frame$reward <- agent_frame$reward - 4
+    # Agent_specs are adapted to model_specs  
+    values$agent_specs <- values$project_specs
+  }
+  
+  # Deciding if model_specs should be changed
+  spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(0.8, 0.1, 0.1))
+  # if spec_chance is positive, 1 is added to model_specs
+  if(spec_change == "positive"){
+    values$project_specs <- values$project_specs + 1
+  }
+  # if spec_chance is negative, 1 is subtracted from model_specs
+  if(spec_change == "negative"){
+    values$project_specs <- values$project_specs - 1
+  }
+  return(list(values, agent_frame))
+}
+
+# Checking if function works
+twodf <- Specs(4, values, agent_frame)
+twodf[[2]]
+# it works
+
+
+```
 
 
 ## Including Plots
