@@ -132,22 +132,18 @@ df = dataframe with information not connected to a specific agent
 # Variables needed to run the function
 values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
 
-Sprint <- function(len, df){
-  # Advancing in the sprint
-  df$sprint_turn <- df$sprint_turn + 1
+Sprint <- function(len, df, turn){
   
   # This happens at the last turn of the sprint
-  if(df$sprint_turn == len){
+  if(df[turn, 3] == len){
     # agent_specs moves closer to project_specs if agent_specs is greater  
-    if(df$agent_specs > df$project_specs){
-      df$agent_specs <- df$agent_specs - 1
+    if(df[turn-1, 2] > df[turn-1, 1]){
+      df[turn, 2] <- df[turn-1, 2] - 1
     }
     # agent_specs moves closer to project_specs if agent_specs is smaller
-    if(df$agent_specs < df$project_specs){
-      df$agent_specs <- df$agent_specs + 1
+    if(df[turn-1, 2] < df[turn-1, 2]){
+      df[turn-1, 2] <- df[turn-1, 2] + 1
     }
-    # Sprint resets
-    df$sprint_turn <- 1
   }
   
   # Function returns changed agent_specs and sprint_turn
@@ -176,33 +172,34 @@ values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
 
 Specs <- function(threshold, arrai, df, turn){
   # Checking if agent_specs has drifted
-  spec_drift <- abs(df$project_specs - df$agent_specs)
+  spec_drift <- abs(df[turn-1,1] - df[turn-1,2])
   # This happens if agent_specs has drifted
   if(spec_drift >= threshold){
     # Penalty
+    df[turn, 4] <- 1
     # ensuring that no reward score goes below 0 and calulating mental health with penalty
     for(i in 1:dim(arrai)[3]){
-      arrai[turn, 3,] <- arrai[turn-1, 3,i] - (arrai[turn-1, 3,i]*0.1)
+      arrai[turn, 3,] <- arrai[turn-1, 3,i] - round((arrai[turn-1, 3,i]*0.1))
       if(arrai[turn, 3, i] <= 0){
         arrai[turn, 3, i] <- 0
       }
       arrai[turn, 4, i] <- arrai[turn, 3, i]/arrai[turn, 2, i]
     }
     # Agent_specs are adapted to model_specs  
-    values$agent_specs <- values$project_specs
+    df[turn, 2] <- df[turn-1, 1]
   }
   
   # Deciding if model_specs should be changed
   spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(0.6, 0.2, 0.2))
   # if spec_chance is positive, 1 is added to model_specs
   if(spec_change == "positive"){
-    values$project_specs <- values$project_specs + 1
+    df[turn, 1] <- df[turn-1, 1] + 1
   }
   # if spec_chance is negative, 1 is subtracted from model_specs
   if(spec_change == "negative"){
-    values$project_specs <- values$project_specs - 1
+    df[turn, 1] <- df[turn-1, 1] - 1
   }
-  return(list(values, arrai))
+  return(list(df, arrai))
 }
 
 # Checking if function works
@@ -214,6 +211,7 @@ twodf[[2]]
 ```
 
 ## Attempt at doing averything at once
+
 ```{r}
 Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "changing"){
   
@@ -221,29 +219,30 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   agents <- array(0,c(n_turns,4,n_agent))
   dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "mental_health")
   # Making a dataframe with additional variables
-  values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
+  values <- tibble("project_specs" = rep.int(0,n_turns), 
+                   "agent_specs" = rep.int(0,n_turns), 
+                   "sprint_turn" = rep_len(1:10,n_turns), 
+                   "break" = rep.int(0,n_turns))
   
   #---> For the first round 
   # This happes in the scrum condition
   if(scrum == TRUE){
     # first turn in a sprint does not give any rewards
     agents[1,2,] <- agents[1,2,] + 1
-    # Advancing in the sprint
-    values$sprint_turn <- values$sprint_turn + 1
     # This happens in the changing specs condition
     if(specs == "changing"){
       # Deciding if model_specs should be changed
       spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(0.8, 0.1, 0.1))
       # if spec_chance is positive, 1 is added to model_specs
       if(spec_change == "positive"){
-        values$project_specs <- values$project_specs + 1
+        values[1,1] <- values[1,1] + 1
       }
       # if spec_chance is negative, 1 is subtracted from model_specs
       if(spec_change == "negative"){
-        values$project_specs <- values$project_specs - 1
+        values[1,1] <- values[1,1] - 1
       }
     }
-  } else { # This happens in th non scrum condition 
+  } else { # This happens in th non-scrum condition 
       for(i in 1:n_agent){
         # Defining the probability of a sucessful collaboration for the first turn
         s_prob <- start_prob
@@ -269,7 +268,7 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
     agents <- Work(start_prob, agents, i)
     # Sprints are simulated and values are udpated
     if(scrum == TRUE){
-      values <- Sprint(10, values)
+      values <- Sprint(10, values, i)
     }
     
     # Spacs are changed and both agent_frame and values are updated
@@ -284,8 +283,9 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
 }
 
 # testing Simulation 
-twodf <- Simulation(100,5,0.75, scrum = FALSE, specs = "changing")
+twodf <- Simulation(100,5,0.75, scrum = TRUE, specs = "static")
 twodf[[2]]
+
 
 ```
 
@@ -297,8 +297,6 @@ I cannot visibly see when there is a change in project_specs - this might be a s
 
 Right now the penalty for project breakdown is calculated individually, but maybe it shouldn't be? 
 
-- (solve today) I want there to be a way I can see the development of specs over time. 
-
 I want to ask Ricardo or someone a question about the work-flow of creating ABM's (ie. is it ok to change your model based on the results? How much?)
 
 Still need to find out more about the implementation of the effort - reward imbalance model.
@@ -307,9 +305,13 @@ The mental_health statistic is hard to interpret as an outcome statistic.
 
 - (ask dad today after a good long think) Also still need to rethink the entire structure of the model (I hate myself)
 
-- (quick think after a break - it's okay if ypu don't solve today) ALso rethink why the specs variable needs to go both ways and not just one. 
+- (quick think after a break - it's okay if you don't solve today) ALso rethink why the specs variable needs to go both ways and not just one. 
 
-There are a bunch more variables I would like to be able to adjust withoout re-defining the function.
+There are a bunch more variables I would like to be able to adjust without re-defining the function.
+
+Individual sucess rates anyone? 
+
+- (solve today) Should sprint or specs come first?
 
 
 ## Including Plots
