@@ -78,14 +78,14 @@ turn = current turn in the model (which row in the array should the function )
 ```{r}
 # this should work as long as I have an agent_frame defined
 
-Work <- function(colab_prob, array, turn) {
+Work <- function(colab_prob, arrai, turn) {
   
   # For loop repeating for each participant
-  for(i in 1:dim(array)[3]){
+  for(i in 1:dim(arrai)[3]){
     
     # Defining the probability of a sucessful collaboration
-    if(array[turn,4,i] != 0){
-      s_prob <- colab_prob*array[turn,4,i]
+    if(arrai[turn-1,4,i] != 0){
+      s_prob <- colab_prob*arrai[turn-1,4,i]
     } else {
       s_prob <- colab_prob
     }
@@ -95,19 +95,18 @@ Work <- function(colab_prob, array, turn) {
     
     # Simulating collaboration
     if(colab == "sucess"){
-      array[turn,1,i] <- array[turn,1,i] + 1
-      array[turn,2,i] <- array[turn,2,i] + 1
-      array[turn,3,i] <- array[turn,3,i] + 1
-      array[turn,4,i] <- array[turn,3,i]/array[turn,2,i]
+      arrai[turn,1,i] <- arrai[turn-1,1,i] + 1
+      arrai[turn,2,i] <- arrai[turn-1,2,i] + 1
+      arrai[turn,3,i] <- arrai[turn-1,3,i] + 1
+      arrai[turn,4,i] <- arrai[turn,3,i]/arrai[turn,2,i]
     } else {
-    array[turn,2,i] <- array[turn,2,i] + 1 
-    array[turn,4,i] <- array[turn,3,i]/array[turn,2,i]
+      arrai[turn,2,i] <- arrai[turn-1,2,i] + 1 
+      arrai[turn,4,i] <- arrai[turn,3,i]/arrai[turn,2,i]
     }
   }
   
   # Retuning the modifyed dataframe
-  return(array)
-  
+  return(arrai)
 }
 
 
@@ -147,7 +146,7 @@ Sprint <- function(len, df){
       df$agent_specs <- df$agent_specs + 1
     }
     # Sprint resets
-    df$sprint_turn <- 0
+    df$sprint_turn <- 1
   }
   
   # Function returns changed agent_specs and sprint_turn
@@ -157,6 +156,7 @@ Sprint <- function(len, df){
 # Test of function
 values <- Sprint(10, values)
 # It works
+
 
 
 ```
@@ -175,7 +175,7 @@ values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
 
 Specs <- function(threshold, array, df){
   # Checking if agent_specs has drifted
-  spec_drift <- abs(values$project_specs - values$agent_specs)
+  spec_drift <- abs(df$project_specs - df$agent_specs)
   # This happens if agent_specs has drifted
   if(spec_drift >= threshold){
     # Penalty 
@@ -204,6 +204,115 @@ twodf[[2]]
 
 
 ```
+
+## Attempt at doing averything at once
+```{r}
+Simulation <- function(n_turns, n_agent, scrum = TRUE, specs = "changing"){
+  
+  # Making an array containing information about all agents
+  agents <- array(0,c(10,4,3))
+  dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "mental_health")
+  # Making a dataframe with additional variables
+  values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
+  
+  #---> For the first round 
+  # This happes in the scrum condition
+  if(scrum == TRUE){
+    # first turn in a sprint does not give any rewards
+    agents[1,2,] <- agents[1,2,] + 1
+    # Advancing in the sprint
+    values$sprint_turn <- values$sprint_turn + 1
+    # This happens in the changing specs condition
+    if(specs == "changing"){
+      # Deciding if model_specs should be changed
+      spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(0.8, 0.1, 0.1))
+      # if spec_chance is positive, 1 is added to model_specs
+      if(spec_change == "positive"){
+        values$project_specs <- values$project_specs + 1
+      }
+      # if spec_chance is negative, 1 is subtracted from model_specs
+      if(spec_change == "negative"){
+        values$project_specs <- values$project_specs - 1
+      }
+    }
+  } else { # This happens in th non scrum condition 
+      for(i in 1:n_agents){
+        # Defining the probability of a sucessful collaboration for the first turn
+        s_prob <- colab_prob
+        # Determining if the collaboration is sucessful
+        colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
+        # Simulating collaboration
+        if(colab == "sucess"){
+          agents[1,1,i] <- agents[1,1,i] + 1
+          agents[1,2,i] <- agents[1,2,i] + 1
+          agents[1,3,i] <- agents[1,3,i] + 1
+          agents[1,4,i] <- agents[1,3,i]/agents[1,2,i]
+        } else {
+          agents[1,2,i] <- agents[1,2,i] + 1 
+          agents[1,4,i] <- agents[1,3,i]/agents[1,2,i]
+        }
+        
+      }
+  }
+  
+  # For loop for repeating repeating the same procedure for the rest of the turns
+  for(i in 2:n_turns){
+    # work is siulated and agent_frame is updated
+    agents <- Work(0.75, agents, i)
+    # Sprints are simulated and values are udpated 
+    values <- Sprint(10, values)
+    # Spacs are changed and both agent_frame and values are updated
+    both <- Specs(4, agent_frame, values)
+    
+    
+    
+    values <- both[[1]]
+    agent_frame <- both[[2]]
+    print(agent_frame)
+  }
+  
+  return(list(values, agent_frame))
+}
+
+
+
+
+
+Work <- function(colab_prob, arrai, turn) {
+  
+  # For loop repeating for each participant
+  for(i in 1:dim(arrai)[3]){
+    
+    # Defining the probability of a sucessful collaboration
+    if(arrai[turn-1,4,i] != 0){
+      s_prob <- colab_prob*arrai[turn-1,4,i]
+    } else {
+      s_prob <- colab_prob
+    }
+    
+    # Determining if the collaboration is sucessful
+    colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
+    
+    # Simulating collaboration
+    if(colab == "sucess"){
+      arrai[turn,1,i] <- arrai[turn-1,1,i] + 1
+      arrai[turn,2,i] <- arrai[turn-1,2,i] + 1
+      arrai[turn,3,i] <- arrai[turn-1,3,i] + 1
+      arrai[turn,4,i] <- arrai[turn,3,i]/arrai[turn,2,i]
+    } else {
+      arrai[turn,2,i] <- arrai[turn-1,2,i] + 1 
+      arrai[turn,4,i] <- arrai[turn,3,i]/arrai[turn,2,i]
+    }
+  }
+  
+  # Retuning the modifyed dataframe
+  return(arrai)
+}
+
+agent_frame <- Work(0.75, agents, 2)
+agent_frame
+```
+
 
 
 ## Including Plots
