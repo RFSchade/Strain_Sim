@@ -125,32 +125,33 @@ agents
 
 Sprint() keeps track of the sprints and changes the model specifications in the Complex condition. It is only used in the Scrum conditions. It should happen at the end of a loop. 
 
-len = the length of the sprint in turns.  
+len = the length of the sprint in turns
+df = dataframe with information not connected to a specific agent
 
 ```{r}
 # Variables needed to run the function
 values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
 
-Sprint <- function(len, values){
+Sprint <- function(len, df){
   # Advancing in the sprint
-  values$sprint_turn <- values$sprint_turn + 1
+  df$sprint_turn <- df$sprint_turn + 1
   
   # This happens at the last turn of the sprint
-  if(values$sprint_turn == len){
+  if(df$sprint_turn == len){
     # agent_specs moves closer to project_specs if agent_specs is greater  
-    if(values$agent_specs > values$project_specs){
-      values$agent_specs <- values$agent_specs - 1
+    if(df$agent_specs > df$project_specs){
+      df$agent_specs <- df$agent_specs - 1
     }
     # agent_specs moves closer to project_specs if agent_specs is smaller
-    if(values$agent_specs < values$project_specs){
-      values$agent_specs <- values$agent_specs + 1
+    if(df$agent_specs < df$project_specs){
+      df$agent_specs <- df$agent_specs + 1
     }
     # Sprint resets
-    values$sprint_turn <- 0
+    df$sprint_turn <- 0
   }
   
   # Function returns changed agent_specs and sprint_turn
-  return(values)
+  return(df)
 }
 
 # Test of function
