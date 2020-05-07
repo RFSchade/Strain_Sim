@@ -16,73 +16,19 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r}
+# Loading packages 
 pacman::p_load(pacman, tidyverse)
 
-# This is a temporary version of the Work() function, which should simulate the agents working and opdate their effort, reward and strain values. 
+# Old agent_frame
+agent_frame <- tibble("agent" = 1:n_agent, "sucess" = 0, "effort" = 1, "reward" = 1, "mental_health" = reward/effort)
 
-# 0nly needs to be defined for the first loop
-#----
-agent_frame <- tibble("agent" = 1:3, "sucess" = 0, "effort" = 1, "reward" = 1, "mental_health" = reward/effort)
-project_specs <- 0
-model_specs <- 2
-sprint_turn <- 1
+# Making an array containing information about all agents
+agents <- array(0,c(10,4,3))
+dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "mental_health")
 
-#----
-
-# if first tun in sprint: 
-
-
-#SpecScheck()
-#----
-spec_diff <- abs(project_specs - model_specs)
-if(spec_diff >= 4){
-  agent_frame$reward <- agent_frame$reward - 4
-  model_specs <- model_specs
-}
-
-#----
-
-#Work()
-#---- 
-s_prob <- 0.5*agent_frame[1,5]
-colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
-
-if(colab == "sucess"){
-  agent_frame[1,2] <- agent_frame[1,2] + 1
-  agent_frame[1,3] <- agent_frame[1,3] + 1
-  agent_frame[1,4] <- agent_frame[1,4] + 1
-  agent_frame[1,4] <- agent_frame[1,4]/agent_frame[1,3]
-} else {
- agent_frame[1,3] <- agent_frame[1,3] + 1 
- agent_frame[1,4] <- agent_frame[1,4]/agent_frame[1,3]
-}
-
-#----
-
-# SpecChange()
-#----
-spec_chance <- sample(c("none", "positive", "negative"), 1, prob = c(0.8, 0.1, 0.1))
-if(spec_change == "positive"){
-  project_specs <- project_specs + 1
-}
-if(spec_change == "negative"){
-  project_specs <- project_specs - 1
-}
-
-#----
-
-# SprintTurn()
-#----
-sprint_turn <- sprint_turn + 1
-if(sprint_turn == 10){
-  if(model_specs > project_specs){
-    model_specs <- model_specs - 1
-  }
-  if(model_specs < project_specs){
-    model_specs <- model_specs + 1
-  }
-  sprint_turn == 0
-}
+# testing Simulation 
+twodf <- Simulation(10,3)
+twodf[[2]]
 ```
 
 ## Simulation() function
@@ -94,9 +40,12 @@ n_agent = the number of agents
 
 ```{r}
 Simulation <- function(n_turns, n_agent){
-  # two dataframes, one for agent information and one for additional variables, are defined.
+  
+  # Making an array containing information about all agents
+  agents <- array(0,c(10,4,3))
+  dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "mental_health")
+  # Making a dataframe with additional variables
   values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
-  agent_frame <- tibble("agent" = 1:n_agent, "sucess" = 0, "effort" = 1, "reward" = 1, "mental_health" = reward/effort)
   
   # For loop for repeating repeating the same procedure for several tuns
   for(i in 1:n_turns){
@@ -114,10 +63,6 @@ Simulation <- function(n_turns, n_agent){
   return(list(values, agent_frame))
 }
 
-# Testing function
-twodf <- Simulation(10,3)
-twodf[[2]]
-
 ```
 
 
@@ -127,42 +72,49 @@ twodf[[2]]
 The Work() function simulates the agents working on the project. It is used in all conditions. 
 
 colab_prob = the defaoult probablility of a sucessful collaboration (ie. not modefied by mental health yet)
+array = array containing information about agents
+turn = current turn in the model (which row in the array should the function )
 
 ```{r}
 # this should work as long as I have an agent_frame defined
 
-Work <- function(colab_prob,agents) {
+Work <- function(colab_prob, array, turn) {
   
   # For loop repeating for each participant
-  for(i in agents$agent){
+  for(i in 1:dim(array)[3]){
     
     # Defining the probability of a sucessful collaboration
-    s_prob <- colab_prob*agents[i,5]
+    if(array[turn,4,i] != 0){
+      s_prob <- colab_prob*array[turn,4,i]
+    } else {
+      s_prob <- colab_prob
+    }
     
     # Determining if the collaboration is sucessful
     colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
     
     # Simulating collaboration
     if(colab == "sucess"){
-      agents[i,2] <- agents[i,2] + 1
-      agents[i,3] <- agents[i,3] + 1
-      agents[i,4] <- agents[i,4] + 1
-      agents[i,5] <- agents[i,4]/agents[i,3]
+      array[turn,1,i] <- array[turn,1,i] + 1
+      array[turn,2,i] <- array[turn,2,i] + 1
+      array[turn,3,i] <- array[turn,3,i] + 1
+      array[turn,4,i] <- array[turn,3,i]/array[turn,2,i]
     } else {
-    agents[i,3] <- agents[i,3] + 1 
-    agents[i,5] <- agents[i,4]/agents[i,3]
+    array[turn,2,i] <- array[turn,2,i] + 1 
+    array[turn,4,i] <- array[turn,3,i]/array[turn,2,i]
     }
   }
   
   # Retuning the modifyed dataframe
-  return(agents)
+  return(array)
   
 }
 
 
 # Test of function 
 agent_frame <- tibble("agent" = 1:3, "sucess" = 0, "effort" = 1, "reward" = 1, "mental_health" = reward/effort)
-agent_frame <- Work(0.75)
+agents <- Work(0.75, agents,1)
+agents
 # It worked
 
 
