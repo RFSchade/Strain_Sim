@@ -22,15 +22,16 @@ pacman::p_load(pacman, tidyverse)
 
 # testing Simulation 
 twodf <- Simulation(n_turns = 100,
-                    n_agent = 5,0.75,
+                    n_agent = 5,
+                    start_prob = 0.75,
                     scrum = TRUE,
                     specs = "changing",
                     threshold = 2,
                     len = 10,
                     penalty = 0.1,
-                    no = 0,
-                    pos = 1,
-                    neg = 0)
+                    no = 0.6,
+                    pos = 0.2,
+                    neg = 0.2)
 twodf[[1]]
 twodf[[2]]
 
@@ -62,7 +63,7 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   values <- tibble("project_specs" = rep.int(0,n_turns), 
                    "agent_specs" = rep.int(0,n_turns), 
                    "sprint_turn" = rep_len(1:len,n_turns), 
-                   "break" = rep.int(0,n_turns))
+                   "breakdown" = rep.int(0,n_turns))
   
   #---> For the first round 
   # This happes in the scrum condition
@@ -268,13 +269,11 @@ Also still need to rethink the entire structure of the model (I hate myself)
 
 ALso rethink why the specs variable needs to go both ways and not just one. 
 
-- (Solve today if you have more time) There are a bunch more variables I would like to be able to adjust without re-defining the function.
-
 Individual sucess rates anyone? 
 
 - (Solve today if you have time and brain-power for doing anything non-robotic) Should sprint or specs come first?
 
-- (Solve if you have more time) plots. You should try to make some more plots. More plots is always good. 
+- (MAke some if you have more time) plots. You should try to make some more plots. More plots is always good. 
 
 ## Extra code for de-bugging
 
@@ -298,7 +297,26 @@ obj[[1]]
 If I want to include nice plots withing this markdown onece I have some nice resuts to plot
 
 ```{r pressure, echo=FALSE}
-plot(pressure)
+
+# First I would have to make a version of the agent array that ggplot can read. 
+
+df <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 4, 1], "agent_2" = twodf[[2]][, 4, 2], "agent_3" = twodf[[2]][, 4, 3], "agent_4" = twodf[[2]][, 4, 4], "agent_5" = twodf[[2]][, 4, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+# This should probably be done in a for-loop if my dataset get big enough. 
+# Breakdown is a bit tricky for some reason
+
+# Then I should change the dataframe from  wide to long format
+p_load(tidyr) # Need tidyr for that
+df_wide <- gather(df, key = "agent", value = "mental_health", agent_1:agent_5)
+
+# Now I can make the ggplot 
+ggplot(df_wide, aes(x = turn, y = mental_health, color = agent)) + geom_line() + geom_point(aes(color = "breakdown"), y = 0.33, data = df_wide %>% filter(breakdown == 1))
+
+# doing another one that takes a bit longer but is also more professional looking
+# TO do that i have to make a separate dataframe for breakdowns
+ggplot(df_wide, aes(x = turn, y = mental_health, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+
+
+
 ```
 
 
