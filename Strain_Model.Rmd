@@ -9,208 +9,32 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Quick notes about organisation 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+In the first code chunck i load the packages necesary for the simulation to run.
+I also use it for testing out the simulation. 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+To actually run the simulation, you have to go down and define the function in the other R chunks. the Simulation() function comes first, but you should define that one last, as it is dependent on the other functions. 
 
 ```{r}
 # Loading packages 
 pacman::p_load(pacman, tidyverse)
 
-# Old agent_frame
-agent_frame <- tibble("agent" = 1:n_agent, "sucess" = 0, "effort" = 1, "reward" = 1, "mental_health" = reward/effort)
-
-# Making an array containing information about all agents
-agents <- array(0,c(10,4,3))
-dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "mental_health")
-
 # testing Simulation 
-twodf <- Simulation(10,3)
+twodf <- Simulation(100,5,0.75, scrum = TRUE, specs = "static")
 twodf[[2]]
+
 ```
 
 ## Simulation() function
 
-The Simulation() function gethers all the Work(), Sprint() and Specs() functions to comute the agent based model. 
+The Simulation() function gathers all the Work(), Sprint() and Specs() functions to comute the agent based model. 
 
 n_turns = the number of turns simulated 
 n_agent = the number of agents
-
-```{r}
-Simulation <- function(n_turns, n_agent){
-  
-  # Making an array containing information about all agents
-  agents <- array(0,c(10,4,3))
-  dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "mental_health")
-  # Making a dataframe with additional variables
-  values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
-  
-  # For loop for repeating repeating the same procedure for several tuns
-  for(i in 1:n_turns){
-    # work is siulated and agent_frame is updated
-    agent_frame <- Work(0.75, agent_frame)
-    # Sprints are simulated and values are udpated 
-    values <- Sprint(10, values)
-    # Spacs are changed and both agent_frame and values are updated
-    both <- Specs(4, agent_frame, values)
-    values <- both[[1]]
-    agent_frame <- both[[2]]
-    print(agent_frame)
-  }
-  
-  return(list(values, agent_frame))
-}
-
-```
-
-
-
-## Work() function 
-
-The Work() function simulates the agents working on the project. It is used in all conditions. 
-
-colab_prob = the defaoult probablility of a sucessful collaboration (ie. not modefied by mental health yet)
-array = array containing information about agents
-turn = current turn in the model (which row in the array should the function )
-
-```{r}
-# this should work as long as I have an agent_frame defined
-
-Work <- function(colab_prob, arrai, turn) {
-  
-  # For loop repeating for each participant
-  for(i in 1:dim(arrai)[3]){
-    
-    # Defining the probability of a sucessful collaboration
-    if(arrai[turn-1,4,i] != 0){
-      s_prob <- colab_prob*arrai[turn-1,4,i]
-    } else {
-      s_prob <- colab_prob
-    }
-    
-    # Determining if the collaboration is sucessful
-    colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
-    
-    # Simulating collaboration
-    if(colab == "sucess"){
-      arrai[turn,1,i] <- 1
-      arrai[turn,2,i] <- arrai[turn-1,2,i] + 1
-      arrai[turn,3,i] <- arrai[turn-1,3,i] + 1
-      arrai[turn,4,i] <- arrai[turn,3,i]/arrai[turn,2,i]
-    } else {
-      arrai[turn,2,i] <- arrai[turn-1,2,i] + 1 
-      arrai[turn,3,i] <- arrai[turn-1,3,i]
-      arrai[turn,4,i] <- arrai[turn,3,i]/arrai[turn,2,i]
-    }
-  }
-  
-  # Retuning the modifyed dataframe
-  return(arrai)
-}
-
-
-# Test of function 
-agent_frame <- tibble("agent" = 1:3, "sucess" = 0, "effort" = 1, "reward" = 1, "mental_health" = reward/effort)
-agents <- Work(0.75, agents,1)
-agents
-# It worked
-
-
-```
-
-
-## Sprint() Function
-
-Sprint() keeps track of the sprints and changes the model specifications in the Complex condition. It is only used in the Scrum conditions. It should happen at the end of a loop. 
-
-len = the length of the sprint in turns
-df = dataframe with information not connected to a specific agent
-
-```{r}
-# Variables needed to run the function
-values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
-
-Sprint <- function(len, df, turn){
-  
-  # This happens at the last turn of the sprint
-  if(df[turn, 3] == len){
-    # agent_specs moves closer to project_specs if agent_specs is greater  
-    if(df[turn-1, 2] > df[turn-1, 1]){
-      df[turn, 2] <- df[turn-1, 2] - 1
-    }
-    # agent_specs moves closer to project_specs if agent_specs is smaller
-    if(df[turn-1, 2] < df[turn-1, 2]){
-      df[turn-1, 2] <- df[turn-1, 2] + 1
-    }
-  }
-  
-  # Function returns changed agent_specs and sprint_turn
-  return(df)
-}
-
-# Test of function
-values <- Sprint(10, values)
-# It works
-
-
-
-```
-
-## Specs() function
-
-Specs() checks for drift in specifications and imposes a penalty on the simulation if the drift is over a certain threshold. It also chnages the specifications.
-
-threshold = the max distance agent_specs can drift from model_specs
-array = array containing information about agents
-df = dataframe with information not connected to a specific agent
-
-```{r}
-# Variables needed to run the function
-values <- tibble("project_specs" = 0, "agent_specs" = 0, "sprint_turn" = 1)
-
-Specs <- function(threshold, arrai, df, turn){
-  # Checking if agent_specs has drifted
-  spec_drift <- abs(df[turn-1,1] - df[turn-1,2])
-  # This happens if agent_specs has drifted
-  if(spec_drift >= threshold){
-    # Penalty
-    df[turn, 4] <- 1
-    # ensuring that no reward score goes below 0 and calulating mental health with penalty
-    for(i in 1:dim(arrai)[3]){
-      arrai[turn, 3,] <- arrai[turn-1, 3,i] - round((arrai[turn-1, 3,i]*0.1))
-      if(arrai[turn, 3, i] <= 0){
-        arrai[turn, 3, i] <- 0
-      }
-      arrai[turn, 4, i] <- arrai[turn, 3, i]/arrai[turn, 2, i]
-    }
-    # Agent_specs are adapted to model_specs  
-    df[turn, 2] <- df[turn-1, 1]
-  }
-  
-  # Deciding if model_specs should be changed
-  spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(0.6, 0.2, 0.2))
-  # if spec_chance is positive, 1 is added to model_specs
-  if(spec_change == "positive"){
-    df[turn, 1] <- df[turn-1, 1] + 1
-  }
-  # if spec_chance is negative, 1 is subtracted from model_specs
-  if(spec_change == "negative"){
-    df[turn, 1] <- df[turn-1, 1] - 1
-  }
-  return(list(df, arrai))
-}
-
-# Checking if function works
-twodf <- Specs(4, values, agent_frame)
-twodf[[2]]
-# it works
-
-
-```
-
-## Attempt at doing averything at once
+start_prob = the initial sucessrate (unmodulated by mental_health) of all the agents
+scrum = Scrum condition or not Scrum condition
+specs = specifying if the scope is changing or static
 
 ```{r}
 Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "changing"){
@@ -279,47 +103,165 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
     }
   }
   
+  # Retun an array with information about participants 
   return(list(values, agents))
 }
 
-# testing Simulation 
-twodf <- Simulation(100,5,0.75, scrum = TRUE, specs = "static")
-twodf[[2]]
+```
 
+
+
+## Work() function 
+
+The Work() function simulates the agents working on the project. It is used in all conditions. 
+
+colab_prob = the defaoult probablility of a sucessful collaboration (ie. not modefied by mental health yet)
+array = array containing information about agents
+turn = current turn in the model (which row in the array should the function)
+
+```{r}
+Work <- function(colab_prob, arrai, turn) {
+  
+  # For loop repeating for each participant
+  for(i in 1:dim(arrai)[3]){
+    
+    # Defining the probability of a sucessful collaboration
+    if(arrai[turn-1,4,i] != 0){
+      s_prob <- colab_prob*arrai[turn-1,4,i]
+    } else {
+      s_prob <- colab_prob
+    }
+    
+    # Determining if the collaboration is sucessful
+    colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
+    
+    # Simulating collaboration
+    if(colab == "sucess"){
+      arrai[turn,1,i] <- 1
+      arrai[turn,2,i] <- arrai[turn-1,2,i] + 1
+      arrai[turn,3,i] <- arrai[turn-1,3,i] + 1
+      arrai[turn,4,i] <- arrai[turn,3,i]/arrai[turn,2,i]
+    } else {
+      arrai[turn,2,i] <- arrai[turn-1,2,i] + 1 
+      arrai[turn,3,i] <- arrai[turn-1,3,i]
+      arrai[turn,4,i] <- arrai[turn,3,i]/arrai[turn,2,i]
+    }
+  }
+  
+  # Retuning the modifyed dataframe
+  return(arrai)
+}
 
 ```
 
+
+## Sprint() Function
+
+Sprint() keeps track of the sprints and changes the model specifications in the Complex condition. It is only used in the Scrum conditions. It should happen at the end of a loop. 
+
+len = the length of the sprint in turns
+df = dataframe with information not connected to a specific agent
+turn = current turn in the model (which row in the array should the function)
+
+```{r}
+Sprint <- function(len, df, turn){
+  
+  # This happens at the last turn of the sprint
+  if(df[turn, 3] == len){
+    # agent_specs moves closer to project_specs if agent_specs is greater  
+    if(df[turn-1, 2] > df[turn-1, 1]){
+      df[turn, 2] <- df[turn-1, 2] - 1
+    }
+    # agent_specs moves closer to project_specs if agent_specs is smaller
+    if(df[turn-1, 2] < df[turn-1, 2]){
+      df[turn-1, 2] <- df[turn-1, 2] + 1
+    }
+  }
+  
+  # Function returns changed agent_specs and sprint_turn
+  return(df)
+}
+
+```
+
+## Specs() function
+
+Specs() checks for drift in specifications and imposes a penalty on the simulation if the drift is over a certain threshold. It also chnages the specifications.
+
+threshold = the max distance agent_specs can drift from model_specs
+array = array containing information about agents
+df = dataframe with information not connected to a specific agent
+turn = current turn in the model (which row in the array should the function)
+
+```{r}
+Specs <- function(threshold, arrai, df, turn){
+  # Checking if agent_specs has drifted
+  spec_drift <- abs(df[turn-1,1] - df[turn-1,2])
+  # This happens if agent_specs has drifted
+  if(spec_drift >= threshold){
+    # Penalty
+    df[turn, 4] <- 1
+    # ensuring that no reward score goes below 0 and calulating mental health with penalty
+    for(i in 1:dim(arrai)[3]){
+      arrai[turn, 3,] <- arrai[turn-1, 3,i] - round((arrai[turn-1, 3,i]*0.1))
+      if(arrai[turn, 3, i] <= 0){
+        arrai[turn, 3, i] <- 0
+      }
+      arrai[turn, 4, i] <- arrai[turn, 3, i]/arrai[turn, 2, i]
+    }
+    # Agent_specs are adapted to model_specs  
+    df[turn, 2] <- df[turn-1, 1]
+  }
+  
+  # Deciding if model_specs should be changed
+  spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(0.6, 0.2, 0.2))
+  # if spec_chance is positive, 1 is added to model_specs
+  if(spec_change == "positive"){
+    df[turn, 1] <- df[turn-1, 1] + 1
+  }
+  # if spec_chance is negative, 1 is subtracted from model_specs
+  if(spec_change == "negative"){
+    df[turn, 1] <- df[turn-1, 1] - 1
+  }
+  return(list(df, arrai))
+}
+
+```
+
+
 ## Issues (notes for myself):
 
-Right now, non scrum seems to be doing much better than scrum (perhaps it is because the one round in the beginning without reward is not well proportioned with the consequence it creates)
+Right now, non-scrum seems to be doing much better than scrum (perhaps it is because the one round in the beginning without reward is not well proportioned with the consequence it creates)
 
 I cannot visibly see when there is a change in project_specs - this might be a sign that I should change the probability of a change in specs. 
 
 Right now the penalty for project breakdown is calculated individually, but maybe it shouldn't be? 
 
-I want to ask Ricardo or someone a question about the work-flow of creating ABM's (ie. is it ok to change your model based on the results? How much?)
+I want to ask someone about the work-flow of creating ABM's (ie. is it ok to change your model based on the results? How much?)
 
 Still need to find out more about the implementation of the effort - reward imbalance model.
 
 The mental_health statistic is hard to interpret as an outcome statistic. 
 
-- (ask dad today after a good long think) Also still need to rethink the entire structure of the model (I hate myself)
+Also still need to rethink the entire structure of the model (I hate myself)
 
-- (quick think after a break - it's okay if you don't solve today) ALso rethink why the specs variable needs to go both ways and not just one. 
+ALso rethink why the specs variable needs to go both ways and not just one. 
 
-There are a bunch more variables I would like to be able to adjust without re-defining the function.
+- (Solve today if you have more time) There are a bunch more variables I would like to be able to adjust without re-defining the function.
 
 Individual sucess rates anyone? 
 
-- (solve today) Should sprint or specs come first?
+- (Solve today if you have time and brain-power for doing anything non-robotic) Should sprint or specs come first?
+
+- (Solve if you have more time) plots. You should try to make some more plots. More plots is always good. 
 
 
 ## Including Plots
 
-You can also embed plots, for example:
+If I want to include nice plots withing this markdown onece I have some nice resuts to plot
 
 ```{r pressure, echo=FALSE}
 plot(pressure)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
