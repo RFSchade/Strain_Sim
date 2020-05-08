@@ -289,7 +289,7 @@ twodf[[2]]
 
 ```
 
-## Issues:
+## Issues (notes for myself):
 
 Right now, non scrum seems to be doing much better than scrum (perhaps it is because the one round in the beginning without reward is not well proportioned with the consequence it creates)
 
