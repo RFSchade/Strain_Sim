@@ -21,7 +21,17 @@ To actually run the simulation, you have to go down and define the function in t
 pacman::p_load(pacman, tidyverse)
 
 # testing Simulation 
-twodf <- Simulation(100,5,0.75, scrum = TRUE, specs = "static")
+twodf <- Simulation(n_turns = 100,
+                    n_agent = 5,0.75,
+                    scrum = TRUE,
+                    specs = "changing",
+                    threshold = 2,
+                    len = 10,
+                    penalty = 0.1,
+                    no = 0,
+                    pos = 1,
+                    neg = 0)
+twodf[[1]]
 twodf[[2]]
 
 ```
@@ -30,14 +40,20 @@ twodf[[2]]
 
 The Simulation() function gathers all the Work(), Sprint() and Specs() functions to comute the agent based model. 
 
-n_turns = the number of turns simulated 
-n_agent = the number of agents
-start_prob = the initial sucessrate (unmodulated by mental_health) of all the agents
-scrum = Scrum condition or not Scrum condition
-specs = specifying if the scope is changing or static
+- n_turns = the number of turns simulated 
+- n_agent = the number of agents
+- start_prob = the initial sucessrate (unmodulated by mental_health) of all the agents
+- scrum = Scrum condition or not Scrum condition
+- specs = specifying if the scope is changing or static
+- threshold = the max distance agent_specs can drift from model_specs
+- len = the length of the sprint in turns
+- Penalty = the size of the penalty for project breakdown - a percentege of reduction in reward for each agent
+- no = the probability of no change in scope 
+- pos = the probability of a positive change in scope
+- neg = the probability of a negative change in scope
 
 ```{r}
-Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "changing"){
+Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "changing", threshold, len, penalty, no, pos, neg){
   
   # Making an array containing information about all agents
   agents <- array(0,c(n_turns,4,n_agent))
@@ -45,7 +61,7 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   # Making a dataframe with additional variables
   values <- tibble("project_specs" = rep.int(0,n_turns), 
                    "agent_specs" = rep.int(0,n_turns), 
-                   "sprint_turn" = rep_len(1:10,n_turns), 
+                   "sprint_turn" = rep_len(1:len,n_turns), 
                    "break" = rep.int(0,n_turns))
   
   #---> For the first round 
@@ -53,19 +69,6 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   if(scrum == TRUE){
     # first turn in a sprint does not give any rewards
     agents[1,2,] <- agents[1,2,] + 1
-    # This happens in the changing specs condition
-    if(specs == "changing"){
-      # Deciding if model_specs should be changed
-      spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(0.8, 0.1, 0.1))
-      # if spec_chance is positive, 1 is added to model_specs
-      if(spec_change == "positive"){
-        values[1,1] <- values[1,1] + 1
-      }
-      # if spec_chance is negative, 1 is subtracted from model_specs
-      if(spec_change == "negative"){
-        values[1,1] <- values[1,1] - 1
-      }
-    }
   } else { # This happens in th non-scrum condition 
       for(i in 1:n_agent){
         # Defining the probability of a sucessful collaboration for the first turn
@@ -85,6 +88,20 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
         
       }
   }
+
+  # This happens in the changing specs condition 
+  if(specs == "changing"){
+    # Deciding if model_specs should be changed
+    spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(no, pos, neg))
+    # if spec_chance is positive, 1 is added to model_specs
+    if(spec_change == "positive"){
+      values[1,1] <- 1
+    }
+    # if spec_chance is negative, 1 is subtracted from model_specs
+    if(spec_change == "negative"){
+      values[1,1] <- (- 1)
+    }
+  }
   
   #----> For loop for repeating repeating the same procedure for the rest of the turns
   for(i in 2:n_turns){
@@ -92,12 +109,12 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
     agents <- Work(start_prob, agents, i)
     # Sprints are simulated and values are udpated
     if(scrum == TRUE){
-      values <- Sprint(10, values, i)
+      values <- Sprint(len, values, i)
     }
     
     # Spacs are changed and both agent_frame and values are updated
     if(specs == "changing"){
-      both <- Specs(2, agents, values, i)
+      both <- Specs(threshold, agents, values, i, penalty, no, pos, neg)
       values <- both[[1]]
       agents <- both[[2]]
     }
@@ -115,9 +132,9 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
 
 The Work() function simulates the agents working on the project. It is used in all conditions. 
 
-colab_prob = the defaoult probablility of a sucessful collaboration (ie. not modefied by mental health yet)
-array = array containing information about agents
-turn = current turn in the model (which row in the array should the function)
+- colab_prob = the defaoult probablility of a sucessful collaboration (ie. not modefied by mental health yet)
+- array = array containing information about agents
+- turn = current turn in the model (which row in the array should the function)
 
 ```{r}
 Work <- function(colab_prob, arrai, turn) {
@@ -159,9 +176,9 @@ Work <- function(colab_prob, arrai, turn) {
 
 Sprint() keeps track of the sprints and changes the model specifications in the Complex condition. It is only used in the Scrum conditions. It should happen at the end of a loop. 
 
-len = the length of the sprint in turns
-df = dataframe with information not connected to a specific agent
-turn = current turn in the model (which row in the array should the function)
+- len = the length of the sprint in turns
+- df = dataframe with information not connected to a specific agent
+- turn = current turn in the model (which row in the array should the function)
 
 ```{r}
 Sprint <- function(len, df, turn){
@@ -188,13 +205,17 @@ Sprint <- function(len, df, turn){
 
 Specs() checks for drift in specifications and imposes a penalty on the simulation if the drift is over a certain threshold. It also chnages the specifications.
 
-threshold = the max distance agent_specs can drift from model_specs
-array = array containing information about agents
-df = dataframe with information not connected to a specific agent
-turn = current turn in the model (which row in the array should the function)
+- threshold = the max distance agent_specs can drift from model_specs
+- array = array containing information about agents
+- df = dataframe with information not connected to a specific agent
+- turn = current turn in the model (which row in the array should the function)
+- no = the probability of no change in scope 
+- pos = the probability of a positive change in scope
+- neg = the probability of a negative change in scope
+- Penalty = the size of the penalty for project breakdown - a percentege of reduction in reward for each agent
 
 ```{r}
-Specs <- function(threshold, arrai, df, turn){
+Specs <- function(threshold, arrai, df, turn, penalty, no, pos, neg){
   # Checking if agent_specs has drifted
   spec_drift <- abs(df[turn-1,1] - df[turn-1,2])
   # This happens if agent_specs has drifted
@@ -203,7 +224,7 @@ Specs <- function(threshold, arrai, df, turn){
     df[turn, 4] <- 1
     # ensuring that no reward score goes below 0 and calulating mental health with penalty
     for(i in 1:dim(arrai)[3]){
-      arrai[turn, 3,] <- arrai[turn-1, 3,i] - round((arrai[turn-1, 3,i]*0.1))
+      arrai[turn, 3,] <- arrai[turn-1, 3,i] - round((arrai[turn-1, 3,i]*penalty))
       if(arrai[turn, 3, i] <= 0){
         arrai[turn, 3, i] <- 0
       }
@@ -214,7 +235,7 @@ Specs <- function(threshold, arrai, df, turn){
   }
   
   # Deciding if model_specs should be changed
-  spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(0.6, 0.2, 0.2))
+  spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(no, pos, neg))
   # if spec_chance is positive, 1 is added to model_specs
   if(spec_change == "positive"){
     df[turn, 1] <- df[turn-1, 1] + 1
@@ -254,6 +275,22 @@ Individual sucess rates anyone?
 - (Solve today if you have time and brain-power for doing anything non-robotic) Should sprint or specs come first?
 
 - (Solve if you have more time) plots. You should try to make some more plots. More plots is always good. 
+
+## Extra code for de-bugging
+
+```{r}
+ # Making an array containing information about all agents
+  agg <- array(0,c(10,4,3))
+  dimnames(agg)[[2]] <- c("sucess", "effort", "reward", "mental_health")
+  # Making a dataframe with additional variables
+  val <- tibble("project_specs" = rep.int(0,10), 
+                "agent_specs" = rep.int(0,10), 
+                "sprint_turn" = rep_len(1:10,10), 
+                "break" = rep.int(0,10))
+
+obj <- Specs(2, agg, val, 2, 0.1, 1, 0, 0)
+obj[[1]]
+```
 
 
 ## Including Plots
