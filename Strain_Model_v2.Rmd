@@ -371,5 +371,14 @@ estimate <- 3 # random
 MH <- intercept + estimate*log(5/4)
 MH
 
+# Toy example using the advice that ricardo gave me
+logodds <- log(1.75)
+ratio <- log(4/5)
+beta <- 1
+V_1 <- 1
+
+# This is the official calculation
+strain_2 <- strain_1 + beta * (ratio * logodds) 
+
 
 ```
