@@ -66,7 +66,30 @@ df_wide_r <- gather(df_r, key = "agent", value = "ratio", agent_1:agent_5)
 
 ggplot(df_wide_r, aes(x = turn, y = ratio, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_r %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
 
+# Plot of the simulation but with only reward
+df_re <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 3, 1], "agent_2" = twodf[[2]][, 3, 2], "agent_3" = twodf[[2]][, 3, 3], "agent_4" = twodf[[2]][, 3, 4], "agent_5" = twodf[[2]][, 3, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
+df_wide_re <- gather(df_re, key = "agent", value = "ratio", agent_1:agent_5)
+
+ggplot(df_wide_re, aes(x = turn, y = ratio, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_re %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+
+# Average reward vs. average effort
+re <- tibble("agent_1_re" = twodf[[2]][, 3, 1], "agent_2_re" = twodf[[2]][, 3, 2], "agent_3_re" = twodf[[2]][, 3, 3], "agent_4_re" = twodf[[2]][, 3, 4], "agent_5_re" = twodf[[2]][, 3, 5]) 
+
+ef <- tibble("agent_1_ef" = twodf[[2]][, 2, 1], "agent_2_ef" = twodf[[2]][, 2, 2], "agent_3_ef" = twodf[[2]][, 2, 3],  "agent_4_ef" = twodf[[2]][, 2, 4], "agent_5_ef" = twodf[[2]][, 2, 5]) 
+
+df_av <- tibble("turn" = 1:100, "effort" = rowMeans(ef), "reward" = rowMeans(re), "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+
+df_wide_av <- gather(df_av, key = "variable", value = "score", reward, effort)
+
+ggplot(df_wide_av, aes(x = turn, y = score, color = variable)) + geom_line(size = 1) + geom_vline(data = df_wide_av %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+
+# Numerical difference between effort and reward
+df_num <- tibble("turn" = 1:100, "agent_1_re" = twodf[[2]][, 3, 1], "agent_2_re" = twodf[[2]][, 3, 2], "agent_3_re" = twodf[[2]][, 3, 3], "agent_4_re" = twodf[[2]][, 3, 4], "agent_5_re" = twodf[[2]][, 3, 5],"agent_1_ef" = twodf[[2]][, 2, 1], "agent_2_ef" = twodf[[2]][, 2, 2], "agent_3_ef" = twodf[[2]][, 2, 3],  "agent_4_ef" = twodf[[2]][, 2, 4], "agent_5_ef" = twodf[[2]][, 2, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown)) %>% mutate("agent_1" = agent_1_ef - agent_1_re, "agent_2" = agent_2_ef - agent_2_re, "agent_3" = agent_3_ef - agent_3_re, "agent_4" = agent_4_ef - agent_4_re, "agent_5" = agent_5_ef - agent_5_re) %>% select(turn, agent_1, agent_2, agent_3, agent_4, agent_5, breakdown)
+
+df_wide_num <- gather(df_num, key = "agent", value = "difference", agent_1:agent_5)
+
+ggplot(df_wide_num, aes(x = turn, y = difference, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_num %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
 ```
 
 ## Simulation() function
