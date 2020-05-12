@@ -59,6 +59,8 @@ df_wide_p <- gather(df_p, key = "agent", value = "strain", agent_1:agent_5)
 
 ggplot(df_wide_p, aes(x = turn, y = strain, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_p %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
 
+#----
+
 # Plot of the simulation but with ratio instead
 df_r <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 4, 1], "agent_2" = twodf[[2]][, 4, 2], "agent_3" = twodf[[2]][, 4, 3], "agent_4" = twodf[[2]][, 4, 4], "agent_5" = twodf[[2]][, 4, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
@@ -69,9 +71,9 @@ ggplot(df_wide_r, aes(x = turn, y = ratio, color = agent)) + geom_line(size = 1)
 # Plot of the simulation but with only reward
 df_re <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 3, 1], "agent_2" = twodf[[2]][, 3, 2], "agent_3" = twodf[[2]][, 3, 3], "agent_4" = twodf[[2]][, 3, 4], "agent_5" = twodf[[2]][, 3, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
-df_wide_re <- gather(df_re, key = "agent", value = "ratio", agent_1:agent_5)
+df_wide_re <- gather(df_re, key = "agent", value = "reward", agent_1:agent_5)
 
-ggplot(df_wide_re, aes(x = turn, y = ratio, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_re %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+ggplot(df_wide_re, aes(x = turn, y = reward, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_re %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
 
 # Average reward vs. average effort
 re <- tibble("agent_1_re" = twodf[[2]][, 3, 1], "agent_2_re" = twodf[[2]][, 3, 2], "agent_3_re" = twodf[[2]][, 3, 3], "agent_4_re" = twodf[[2]][, 3, 4], "agent_5_re" = twodf[[2]][, 3, 5]) 
@@ -173,6 +175,15 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   for(i in 2:n_turns){
     # work is siulated and agent_frame is updated
     agents <- Work(start_prob, agents, i, beta, odds)
+    
+    # Attempt to make reward make more sense
+    if(values[i, 3] == 5){
+      for(j in 1:n_agent){
+        agents[i,3,j] <- agents[i,3,j] + rnorm(1, mean=1, sd=1)
+      }
+    }
+      
+    
     # Sprints are simulated and values are udpated
     if(scrum == TRUE){
       values <- Sprint(len, values, i)
