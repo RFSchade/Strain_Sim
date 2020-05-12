@@ -180,16 +180,6 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
     # work is siulated and agent_frame is updated
     agents <- Work(start_prob, agents, i, beta, odds)
     
-    # Attempt to make reward make more sense
-    if(values[i, 3] == 5){
-      for(j in 1:n_agent){
-        mu <- agents[i, 3, j] * 0.05
-        sig <- agents[i, 3, j] * 0.01
-        agents[i,3,j] <- agents[i,3,j] + rnorm(1, mean=mu, sd=sig)
-      }
-    }
-      
-    
     # Sprints are simulated and values are udpated
     if(scrum == TRUE){
       values <- Sprint(len, values, i)
