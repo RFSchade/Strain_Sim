@@ -133,7 +133,7 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   # This happes in the scrum condition
   if(scrum == TRUE){
     # first turn in a sprint does not give any rewards
-    agents[1,2,] <- agents[1,2,] + 1
+    agents[1,2,] <- agents[1,2,] + rnorm(1, mean=1, sd=0.5)
     # Calculating strain 
     for(i in 1:n_agent){
       agents[1, 4, i] <- log(agents[1, 2, i]/agents[1, 3, i]) # calculating the ER ratio
@@ -148,12 +148,12 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
         # Simulating collaboration
         if(colab == "sucess"){
           agents[1,1,i] <- 1
-          agents[1,2,i] <- agents[1,2,i] + 1
-          agents[1,3,i] <- agents[1,3,i] + 1
+          agents[1,2,i] <- agents[1,2,i] + rnorm(1, mean=1, sd=0.5)
+          agents[1,3,i] <- agents[1,3,i] + rnorm(1, mean=1, sd=0.5)
           agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
           agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
         } else {
-          agents[1,2,i] <- agents[1,2,i] + 1 
+          agents[1,2,i] <- agents[1,2,i] + rnorm(1, mean=1, sd=0.5)
           agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
           agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
         }
@@ -224,12 +224,12 @@ Work <- function(colab_prob, arrai, turn, beta, odds) {
     # Simulating collaboration
     if(colab == "sucess"){
       arrai[turn,1,i] <- 1
-      arrai[turn,2,i] <- arrai[turn-1,2,i] + 1
-      arrai[turn,3,i] <- arrai[turn-1,3,i] + 1
+      arrai[turn,2,i] <- arrai[turn-1,2,i] + rnorm(1, mean=1, sd=0.5)
+      arrai[turn,3,i] <- arrai[turn-1,3,i] + rnorm(1, mean=1, sd=0.5)
       arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
       arrai[turn,5,i] <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
     } else {
-      arrai[turn,2,i] <- arrai[turn-1,2,i] + 1 
+      arrai[turn,2,i] <- arrai[turn-1,2,i] + rnorm(1, mean=1, sd=0.5) 
       arrai[turn,3,i] <- arrai[turn-1,3,i]
       arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
       arrai[turn,5,i] <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
