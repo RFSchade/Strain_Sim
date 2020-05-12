@@ -24,8 +24,8 @@ pacman::p_load(pacman, tidyverse)
 twodf <- Simulation(n_turns = 100,
                     n_agent = 5,
                     start_prob = 0.75,
-                    scrum = TRUE,
-                    specs = "changing",
+                    scrum = FALSE,
+                    specs = "static",
                     threshold = 2,
                     len = 5,
                     penalty = 0.05,
@@ -33,7 +33,7 @@ twodf <- Simulation(n_turns = 100,
                     pos = 0.2,
                     neg = 0.2,
                     beta = 1,
-                    odds = 1.75)
+                    odds = 1.42)
 twodf[[1]]
 twodf[[2]][,,5]
 
@@ -114,11 +114,15 @@ The Simulation() function gathers all the Work(), Sprint() and Specs() functions
 Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "changing", threshold, len, penalty, no, pos, neg, beta, odds){
   
   # Making an array containing information about all agents
-  agents <- array(0,c(n_turns,5,n_agent))
-  dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "ratio", "strain")
+  agents <- array(0,c(n_turns,6,n_agent))
+  dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "ratio", "strain", "baseline")
   # Rewards and effort are both set to 1 to avoid infinity 
   agents[1, 2,] <- 1
   agents[1, 3,] <- 1
+  # Setting baseline
+  for(i in 1:n_agent){
+    agents[,6,i] <- rnorm(1, mean=2, sd=0.2)
+  }
   # Making a dataframe with additional variables
   values <- tibble("project_specs" = rep.int(0,n_turns), 
                    "agent_specs" = rep.int(0,n_turns), 
@@ -131,9 +135,9 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
     # first turn in a sprint does not give any rewards
     agents[1,2,] <- agents[1,2,] + 1
     # Calculating strain 
-    for(i in n_agent){
+    for(i in 1:n_agent){
       agents[1, 4, i] <- log(agents[1, 2, i]/agents[1, 3, i]) # calculating the ER ratio
-      agents[1, 5, i] <- rnorm(1, mean=2, sd=0.2) + (beta * agents[1, 4, i] * odds)
+      agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
     }
   } else { # This happens in th non-scrum condition 
       for(i in 1:n_agent){
@@ -147,11 +151,11 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
           agents[1,2,i] <- agents[1,2,i] + 1
           agents[1,3,i] <- agents[1,3,i] + 1
           agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
-          agents[1, 5, i] <- rnorm(1, mean=2, sd=0.2) + (beta * agents[1, 4, i] * odds)
+          agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
         } else {
           agents[1,2,i] <- agents[1,2,i] + 1 
           agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
-          agents[1, 5, i] <- rnorm(1, mean=2, sd=0.2) + (beta * agents[1, 4, i] * odds)
+          agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
         }
         
       }
@@ -179,7 +183,9 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
     # Attempt to make reward make more sense
     if(values[i, 3] == 5){
       for(j in 1:n_agent){
-        agents[i,3,j] <- agents[i,3,j] + rnorm(1, mean=1, sd=1)
+        mu <- agents[i, 3, j] * 0.05
+        sig <- agents[i, 3, j] * 0.01
+        agents[i,3,j] <- agents[i,3,j] + rnorm(1, mean=mu, sd=sig)
       }
     }
       
@@ -231,12 +237,12 @@ Work <- function(colab_prob, arrai, turn, beta, odds) {
       arrai[turn,2,i] <- arrai[turn-1,2,i] + 1
       arrai[turn,3,i] <- arrai[turn-1,3,i] + 1
       arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
-      arrai[turn,5,i] <- arrai[turn-1,5,i] + (beta * arrai[turn,4,i] * odds)
+      arrai[turn,5,i] <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
     } else {
       arrai[turn,2,i] <- arrai[turn-1,2,i] + 1 
       arrai[turn,3,i] <- arrai[turn-1,3,i]
       arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
-      arrai[turn,5,i] <- arrai[turn-1,5,i] + (beta * arrai[turn,4,i] * odds)
+      arrai[turn,5,i] <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
     }
   }
   
