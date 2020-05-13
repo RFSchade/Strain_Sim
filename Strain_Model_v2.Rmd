@@ -18,7 +18,7 @@ To actually run the simulation, you have to go down and define the function in t
 
 ```{r}
 # Loading packages 
-pacman::p_load(pacman, tidyverse)
+pacman::p_load(pacman, tidyverse, truncnorm)
 
 # testing Simulation 
 twodf <- Simulation(n_turns = 100,
@@ -35,7 +35,7 @@ twodf <- Simulation(n_turns = 100,
                     beta = 1,
                     odds = 1.42)
 twodf[[1]]
-twodf[[2]][,,5]
+twodf[[2]][,,2]
 
 
 # Plot of the sumilation 
@@ -117,8 +117,8 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   agents <- array(0,c(n_turns,6,n_agent))
   dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "ratio", "strain", "baseline")
   # Rewards and effort are both set to 1 to avoid infinity 
-  agents[1, 2,] <- 1
-  agents[1, 3,] <- 1
+  agents[1, 2,] <- rtruncnorm(1, a=1, b=3, mean = 2, sd = 0.5)
+  agents[1, 3,] <- rtruncnorm(1, a=1, b=3, mean = 2, sd = 0.5)
   # Setting baseline
   for(i in 1:n_agent){
     agents[,6,i] <- rnorm(1, mean=2, sd=0.2)
@@ -133,9 +133,10 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   # This happes in the scrum condition
   if(scrum == TRUE){
     # first turn in a sprint does not give any rewards
-    agents[1,2,] <- agents[1,2,] + rnorm(1, mean=1, sd=0.5)
-    # Calculating strain 
+    # Calculating strain and effort/reward
     for(i in 1:n_agent){
+      agents[1,2,i] <- rtruncnorm(1, a=1, b=3, mean = 2, sd = 0.5)
+      agents[1,3,i] <- rtruncnorm(1, a=1, b=agents[1,2,i], mean = 2, sd = 0.5)
       agents[1, 4, i] <- log(agents[1, 2, i]/agents[1, 3, i]) # calculating the ER ratio
       agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
     }
@@ -148,12 +149,13 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
         # Simulating collaboration
         if(colab == "sucess"){
           agents[1,1,i] <- 1
-          agents[1,2,i] <- agents[1,2,i] + rnorm(1, mean=1, sd=0.5)
-          agents[1,3,i] <- agents[1,3,i] + rnorm(1, mean=1, sd=0.5)
+          agents[1,3,i] <- rtruncnorm(1, a=1, b=3, mean = 2, sd = 0.5)
+          agents[1,2,i] <- rtruncnorm(1, a=1, b=agents[1,3,i], mean = 2, sd = 0.5)
           agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
           agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
         } else {
-          agents[1,2,i] <- agents[1,2,i] + rnorm(1, mean=1, sd=0.5)
+          agents[1,2,i] <- rtruncnorm(1, a=1, b=3, mean = 2, sd = 0.5)
+          agents[1, 3, i] <- rtruncnorm(1, a=1, b=agents[1,2,i], mean = 2, sd = 0.5)
           agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
           agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
         }
@@ -224,13 +226,13 @@ Work <- function(colab_prob, arrai, turn, beta, odds) {
     # Simulating collaboration
     if(colab == "sucess"){
       arrai[turn,1,i] <- 1
-      arrai[turn,2,i] <- arrai[turn-1,2,i] + rnorm(1, mean=1, sd=0.5)
-      arrai[turn,3,i] <- arrai[turn-1,3,i] + rnorm(1, mean=1, sd=0.5)
+      arrai[turn,3,i] <- rtruncnorm(1, a=1, b=3, mean = 2, sd = 0.5)
+      arrai[turn,2,i] <- rtruncnorm(1, a=1, b=arrai[turn,3,i], mean = 2, sd = 0.5)
       arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
       arrai[turn,5,i] <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
     } else {
-      arrai[turn,2,i] <- arrai[turn-1,2,i] + rnorm(1, mean=1, sd=0.5) 
-      arrai[turn,3,i] <- arrai[turn-1,3,i]
+      arrai[turn,2,i] <- rtruncnorm(1, a=1, b=3, mean = 2, sd = 0.5) 
+      arrai[turn,3,i] <- rtruncnorm(1, a=1, b=arrai[turn,2,i], mean = 2, sd = 0.5)
       arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
       arrai[turn,5,i] <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
     }
