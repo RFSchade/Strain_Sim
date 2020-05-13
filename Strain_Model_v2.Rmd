@@ -121,7 +121,7 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   agents[1, 3,] <- 1
   # Setting baseline for strain
   for(i in 1:n_agent){
-    agents[,6,i] <- rnorm(1, mean=2, sd=0.2)
+    agents[,6,i] <- rnorm(1, mean=0.5, sd=0.02)
   }
   # Making a dataframe with additional variables
   values <- tibble("project_specs" = rep.int(0,n_turns), 
