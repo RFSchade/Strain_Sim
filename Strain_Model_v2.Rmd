@@ -18,7 +18,7 @@ To actually run the simulation, you have to go down and define the function in t
 
 ```{r}
 # Loading packages 
-pacman::p_load(pacman, tidyverse, truncnorm, groupdata2)
+pacman::p_load(pacman, tidyverse, truncnorm, groupdata2, gtools)
 
 # testing Simulation 
 twodf <- Simulation(n_turns = 100,
@@ -105,6 +105,7 @@ df_num <- tibble("turn" = 1:100, "agent_1_re" = twodf[[2]][, 3, 1], "agent_2_re"
 df_wide_num <- gather(df_num, key = "agent", value = "difference", agent_1:agent_5)
 
 ggplot(df_wide_num, aes(x = turn, y = difference, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_num %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+
 ```
 
 ## Simulation() function
@@ -129,12 +130,9 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   # Making an array containing information about all agents
   agents <- array(0,c(n_turns,6,n_agent))
   dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "ratio", "strain", "baseline")
-  # Rewards and effort are both set to 1 to avoid infinity 
-  agents[1, 2,] <- 1
-  agents[1, 3,] <- 1
   # Setting baseline for strain
   for(i in 1:n_agent){
-    agents[,6,i] <- rnorm(1, mean=0.01, sd=0.05)
+    agents[,6,i] <- rnorm(1, mean=-2.442347, sd=0.5)
   }
   # Making a dataframe with additional variables
   values <- tibble("project_specs" = rep.int(0,n_turns), 
