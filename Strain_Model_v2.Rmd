@@ -24,8 +24,8 @@ pacman::p_load(pacman, tidyverse, truncnorm, groupdata2, gtools)
 twodf <- Simulation(n_turns = 100,
                     n_agent = 5,
                     start_prob = 0.50,
-                    scrum = TRUE,
-                    specs = "changing",
+                    scrum = FALSE,
+                    specs = "static",
                     threshold = 2,
                     len = 5,
                     penalty = 0.05,
@@ -36,7 +36,7 @@ twodf <- Simulation(n_turns = 100,
                     odds = 1.49,
                     s_beta = 0)
 twodf[[1]]
-twodf[[2]][,,3]
+twodf[[2]][,,5]
 
 
 
@@ -129,11 +129,15 @@ The Simulation() function gathers all the Work(), Sprint() and Specs() functions
 Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "changing", threshold, len, penalty, no, pos, neg, beta, odds, s_beta){
   
   # Making an array containing information about all agents
-  agents <- array(0,c(n_turns,6,n_agent))
-  dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "ratio", "strain", "baseline")
+  agents <- array(0,c(n_turns,7,n_agent))
+  dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "ratio", "strain", "baseline", "sucess_rate")
   # Setting baseline for strain
   for(i in 1:n_agent){
     agents[,6,i] <- rnorm(1, mean=0.549834, sd=0.01)
+  }
+  # Setting sucessrate for each agent
+  for(i in 1:n_agent){
+    agents[,7,i] <- rnorm(1, mean=0.50, sd=0.10)
   }
   # Making a dataframe with additional variables
   values <- tibble("project_specs" = rep.int(0,n_turns), 
@@ -158,7 +162,7 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   } else { # This happens in th non-scrum condition 
       for(i in 1:n_agent){
         # Defining the probability of a sucessful collaboration for the first turn
-        s_prob <- start_prob
+        s_prob <- agents[1,7,i]
         # Determining if the collaboration is sucessful
         colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
         # Simulating collaboration
@@ -239,7 +243,7 @@ Work <- function(colab_prob, arrai, turn, beta, odds, s_beta) {
   for(i in 1:dim(arrai)[3]){
     
     # Defining the probability of a sucessful collaboration
-    s_prob <- colab_prob  + (logit2prob(arrai[turn-1,5,i]) * s_beta)
+    s_prob <- arrai[turn,7,i] + (logit2prob(arrai[turn-1,5,i]) * s_beta)
 
     # Determining if the collaboration is sucessful
     colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
