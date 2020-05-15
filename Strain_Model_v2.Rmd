@@ -21,14 +21,14 @@ To actually run the simulation, you have to go down and define the function in t
 pacman::p_load(pacman, tidyverse, truncnorm, groupdata2, gtools)
 
 # testing Simulation 
-twodf <- Simulation(n_turns = 1000,
+twodf <- Simulation(n_turns = 100,
                     n_agent = 5,
                     start_prob = 0.50,
-                    scrum = FALSE,
-                    specs = "static",
+                    scrum = TRUE,
+                    specs = "changing",
                     threshold = 2,
                     len = 5,
-                    penalty = 0.10,
+                    penalty = 0.05,
                     no = 0.6,
                     pos = 0.2,
                     neg = 0.2,
@@ -36,12 +36,12 @@ twodf <- Simulation(n_turns = 1000,
                     odds = 1.49,
                     s_beta = 0)
 twodf[[1]]
-twodf[[2]][,,2]
+twodf[[2]][,,3]
 
 
 
 # Plot of the sumilation 
-df <- tibble("turn" = 1:1000,"agent_1" = twodf[[2]][, 5, 1], "agent_2" = twodf[[2]][, 5, 2], "agent_3" = twodf[[2]][, 5, 3], "agent_4" = twodf[[2]][, 5, 4], "agent_5" = twodf[[2]][, 5, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+df <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 5, 1], "agent_2" = twodf[[2]][, 5, 2], "agent_3" = twodf[[2]][, 5, 3], "agent_4" = twodf[[2]][, 5, 4], "agent_5" = twodf[[2]][, 5, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
 
 #df[,8] <- c(rep(1,5), rep(2,5), rep(3,5), rep(4,5), rep(5,5), rep(6,5), rep(7,5), rep(8,5), rep(9,5), rep(10,5), rep(11,5), rep(12,5), rep(13,5), rep(14,5), rep(15,5), rep(16,5), rep(17,5), rep(18,5), rep(19,5), rep(20,5))
@@ -64,7 +64,7 @@ logit2prob <- function(logit){
   return(prob)
 }
 # making dataframe 
-df_p <- tibble("turn" = 1:1000,"agent_1" = logit2prob(twodf[[2]][, 5, 1]), "agent_2" = logit2prob(twodf[[2]][, 5, 2]), "agent_3" = logit2prob(twodf[[2]][, 5, 3]), "agent_4" = logit2prob(twodf[[2]][, 5, 4]), "agent_5" = logit2prob(twodf[[2]][, 5, 5]), "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+df_p <- tibble("turn" = 1:100,"agent_1" = logit2prob(twodf[[2]][, 5, 1]), "agent_2" = logit2prob(twodf[[2]][, 5, 2]), "agent_3" = logit2prob(twodf[[2]][, 5, 3]), "agent_4" = logit2prob(twodf[[2]][, 5, 4]), "agent_5" = logit2prob(twodf[[2]][, 5, 5]), "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
 df_wide_p <- gather(df_p, key = "agent", value = "strain", agent_1:agent_5)
 
@@ -73,14 +73,14 @@ ggplot(df_wide_p, aes(x = turn, y = strain, color = agent)) + geom_line(size = 1
 #----
 
 # Plot of the simulation but with ratio instead
-df_r <- tibble("turn" = 1:1000,"agent_1" = twodf[[2]][, 4, 1], "agent_2" = twodf[[2]][, 4, 2], "agent_3" = twodf[[2]][, 4, 3], "agent_4" = twodf[[2]][, 4, 4], "agent_5" = twodf[[2]][, 4, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+df_r <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 4, 1], "agent_2" = twodf[[2]][, 4, 2], "agent_3" = twodf[[2]][, 4, 3], "agent_4" = twodf[[2]][, 4, 4], "agent_5" = twodf[[2]][, 4, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
 df_wide_r <- gather(df_r, key = "agent", value = "ratio", agent_1:agent_5)
 
 ggplot(df_wide_r, aes(x = turn, y = ratio, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_r %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
 
 # Plot of the simulation but with only reward
-df_re <- tibble("turn" = 1:1000,"agent_1" = twodf[[2]][, 3, 1], "agent_2" = twodf[[2]][, 3, 2], "agent_3" = twodf[[2]][, 3, 3], "agent_4" = twodf[[2]][, 3, 4], "agent_5" = twodf[[2]][, 3, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+df_re <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 3, 1], "agent_2" = twodf[[2]][, 3, 2], "agent_3" = twodf[[2]][, 3, 3], "agent_4" = twodf[[2]][, 3, 4], "agent_5" = twodf[[2]][, 3, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
 df_wide_re <- gather(df_re, key = "agent", value = "reward", agent_1:agent_5)
 
@@ -93,20 +93,20 @@ re <- tibble("agent_1_re" = twodf[[2]][, 3, 1], "agent_2_re" = twodf[[2]][, 3, 2
 
 ef <- tibble("agent_1_ef" = twodf[[2]][, 2, 1], "agent_2_ef" = twodf[[2]][, 2, 2], "agent_3_ef" = twodf[[2]][, 2, 3],  "agent_4_ef" = twodf[[2]][, 2, 4], "agent_5_ef" = twodf[[2]][, 2, 5]) 
 
-df_av <- tibble("turn" = 1:1000, "effort" = rowMeans(ef), "reward" = rowMeans(re), "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+df_av <- tibble("turn" = 1:100, "effort" = rowMeans(ef), "reward" = rowMeans(re), "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
 df_wide_av <- gather(df_av, key = "variable", value = "score", reward, effort)
 
 ggplot(df_wide_av, aes(x = turn, y = log(score), color = variable)) + geom_line(size = 1) + geom_vline(data = df_wide_av %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
 
 # Numerical difference between effort and reward
-df_num <- tibble("turn" = 1:1000, "agent_1_re" = twodf[[2]][, 3, 1], "agent_2_re" = twodf[[2]][, 3, 2], "agent_3_re" = twodf[[2]][, 3, 3], "agent_4_re" = twodf[[2]][, 3, 4], "agent_5_re" = twodf[[2]][, 3, 5],"agent_1_ef" = twodf[[2]][, 2, 1], "agent_2_ef" = twodf[[2]][, 2, 2], "agent_3_ef" = twodf[[2]][, 2, 3],  "agent_4_ef" = twodf[[2]][, 2, 4], "agent_5_ef" = twodf[[2]][, 2, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown)) %>% mutate("agent_1" = agent_1_ef - agent_1_re, "agent_2" = agent_2_ef - agent_2_re, "agent_3" = agent_3_ef - agent_3_re, "agent_4" = agent_4_ef - agent_4_re, "agent_5" = agent_5_ef - agent_5_re) %>% select(turn, agent_1, agent_2, agent_3, agent_4, agent_5, breakdown)
+df_num <- tibble("turn" = 1:100, "agent_1_re" = twodf[[2]][, 3, 1], "agent_2_re" = twodf[[2]][, 3, 2], "agent_3_re" = twodf[[2]][, 3, 3], "agent_4_re" = twodf[[2]][, 3, 4], "agent_5_re" = twodf[[2]][, 3, 5],"agent_1_ef" = twodf[[2]][, 2, 1], "agent_2_ef" = twodf[[2]][, 2, 2], "agent_3_ef" = twodf[[2]][, 2, 3],  "agent_4_ef" = twodf[[2]][, 2, 4], "agent_5_ef" = twodf[[2]][, 2, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown)) %>% mutate("agent_1" = agent_1_ef - agent_1_re, "agent_2" = agent_2_ef - agent_2_re, "agent_3" = agent_3_ef - agent_3_re, "agent_4" = agent_4_ef - agent_4_re, "agent_5" = agent_5_ef - agent_5_re) %>% select(turn, agent_1, agent_2, agent_3, agent_4, agent_5, breakdown)
 
 df_wide_num <- gather(df_num, key = "agent", value = "difference", agent_1:agent_5)
 
 ggplot(df_wide_num, aes(x = turn, y = difference, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_num %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
 
-inv.logit(0.27)
+inv.logit(0.20)
 ```
 
 ## Simulation() function
@@ -133,7 +133,7 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
   dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "ratio", "strain", "baseline")
   # Setting baseline for strain
   for(i in 1:n_agent){
-    agents[,6,i] <- rnorm(1, mean=0.5670929, sd=0.01)
+    agents[,6,i] <- rnorm(1, mean=0.549834, sd=0.01)
   }
   # Making a dataframe with additional variables
   values <- tibble("project_specs" = rep.int(0,n_turns), 
@@ -152,7 +152,8 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
       agents[1,2,i] <- 1 * eff
       agents[1,3,i] <- 1 * rew
       agents[1, 4, i] <- log(agents[1, 2, i]/agents[1, 3, i]) # calculating the ER ratio
-      agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
+      strain <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
+      agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
     }
   } else { # This happens in th non-scrum condition 
       for(i in 1:n_agent){
@@ -168,14 +169,16 @@ Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "chan
           agents[1,2,i] <- 1 * eff
           agents[1,3,i] <- 1 * rew
           agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
-          agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
+          strain <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
+          agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
         } else {
           eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.01)
           rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.01)
           agents[1,2,i] <- 1 * eff
           agents[1, 3, i] <- 1 * rew
           agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
-          agents[1, 5, i] <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
+          strain <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
+          agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
         }
         
       }
@@ -249,14 +252,16 @@ Work <- function(colab_prob, arrai, turn, beta, odds, s_beta) {
       arrai[turn,2,i] <- arrai[turn-1,2,i] * eff
       arrai[turn,3,i] <- arrai[turn-1,3,i] * rew
       arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
-      arrai[turn,5,i] <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
+      strain <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
+      arrai[turn,5,i] <- rnorm(1, mean = strain, sd = 0.01)
     } else {
       eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
       rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
       arrai[turn,2,i] <- arrai[turn-1,2,i] * eff
       arrai[turn,3,i] <- arrai[turn-1,3,i] * rew
       arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
-      arrai[turn,5,i] <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
+      strain <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
+      arrai[turn,5,i] <- rnorm(1, mean = strain, sd = 0.01)
     }
   }
   
@@ -319,7 +324,7 @@ Specs <- function(threshold, arrai, df, turn, penalty, no, pos, neg, beta, odds)
     df[turn, 4] <- 1
     # ensuring that no reward score goes below 1 and calulating strain with penalty
     for(i in 1:dim(arrai)[3]){
-      arrai[turn,3,i] <- arrai[turn,3,i] - round(abs((arrai[turn, 3,i]*penalty)))
+      arrai[turn,3,i] <- arrai[turn-1,3,i] - abs((arrai[turn-1, 3,i]*penalty))
       if(arrai[turn, 3, i] < 1){
         arrai[turn, 3, i] <- 1
       }
@@ -373,6 +378,9 @@ Individual sucess rates anyone?
 
 obj <- Specs(2, agg, val, 2, 0.1, 1, 0, 0)
 obj[[1]]
+
+1.350841 - abs((1.350841*0.10))
+
 ```
 
 
