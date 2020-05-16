@@ -24,7 +24,7 @@ pacman::p_load(pacman, tidyverse, truncnorm, groupdata2, gtools)
 twodf <- Simulation(n_turns = 100,
                     n_agent = 5,
                     start_prob = 0.50,
-                    scrum = FALSE,
+                    scrum = TRUE,
                     specs = "static",
                     threshold = 2,
                     len = 5,
