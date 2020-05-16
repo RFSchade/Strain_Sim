@@ -1,8 +1,10 @@
 ---
-title: "Strain_ABM"
-author: "Rebecca"
+title: "Agent based model of occupational strain across project management frameworks."
+author: "Rebecca Folmer Schade"
 date: "3 maj 2020"
-output: html_document
+output:   
+  md_document:
+    variant: markdown_github
 ---
 
 ```{r setup, include=FALSE}
@@ -11,35 +13,294 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Quick notes about organisation 
 
-In the first code chunck i load the packages necesary for the simulation to run.
-I also use it for testing out the simulation. 
+The first 4 code chuncks define functions necesary for running the model. 
+Above each function there is a short description of how the function is used in the simulation as well as an explantion the input for each function. 
+To run the model, define each function in order of appearance as the last function, Simulation(), is dependent on the rest.
+The code to run the model can be found in the second-to-last code chunk.
 
-To actually run the simulation, you have to go down and define the function in the other R chunks. the Simulation() function comes first, but you should define that one last, as it is dependent on the other functions. (This is less than ideal, but I will change it later probably)
+
+## Specs() function
+
+Specs() checks for drift in specifications and imposes a penalty on the simulation if the drift is over a certain threshold. It also chnages the specifications.
+
+- threshold = the max distance agent_specs can drift from model_specs
+- array = array containing information about agents
+- df = dataframe with information not connected to a specific agent
+- turn = current turn in the model (which row in the array should the function)
+- Penalty = the size of the penalty for project breakdown - a percentege of reduction in reward for each agent
+- no = the probability of no change in scope 
+- pos = the probability of a positive change in scope
+- neg = the probability of a negative change in scope
+- beta = the moderator of the effect of the effort/rewards ratio on mental health
+- odds = odds ratio detailing the increase in strain
 
 ```{r}
-# Loading packages 
+# First we have to load some packages
 pacman::p_load(pacman, tidyverse, truncnorm, groupdata2, gtools)
 
+# Then we can define the first function 
+Specs <- function(threshold, arrai, df, turn, penalty, no, pos, neg, beta, odds){
+  # Checking if agent_specs has drifted
+  spec_drift <- abs(df[turn-1,1] - df[turn-1,2])
+  # This happens if agent_specs has drifted
+  if(spec_drift >= threshold){
+    # Penalty
+    df[turn, 4] <- 1
+    # ensuring that no reward score goes below 1 and calulating strain with penalty
+    for(i in 1:dim(arrai)[3]){
+      arrai[turn,3,i] <- arrai[turn-1,3,i] - abs((arrai[turn-1, 3,i]*penalty))
+      if(arrai[turn, 3, i] < 1){
+        arrai[turn, 3, i] <- 1
+      }
+      arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
+      arrai[turn,5,i] <- arrai[turn-1,5,i] + (beta * arrai[turn,4,i] * log(odds))
+    }
+    # Agent_specs are adapted to model_specs  
+    df[turn, 2] <- df[turn-1, 1]
+  }
+  
+  # Deciding if model_specs should be changed
+  spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(no, pos, neg))
+  # if spec_chance is positive, 1 is added to model_specs
+  if(spec_change == "positive"){
+    df[turn, 1] <- df[turn-1, 1] + 1
+  }
+  # if spec_chance is negative, 1 is subtracted from model_specs
+  if(spec_change == "negative"){
+    df[turn, 1] <- df[turn-1, 1] - 1
+  }
+  return(list(df, arrai))
+}
+
+```
+
+
+## Sprint() Function
+
+Sprint() keeps track of the sprints and changes the model specifications in the Complex condition. It is only used in the Scrum conditions. It should happen at the end of a loop. 
+
+- len = the length of the sprint in turns
+- df = dataframe with information not connected to a specific agent
+- turn = current turn in the model (which row in the array should the function)
+
+```{r}
+Sprint <- function(len, df, turn){
+  
+  # This happens at the last turn of the sprint
+  if(df[turn, 3] == len){
+    # agent_specs moves closer to project_specs if agent_specs is greater  
+    if(df[turn-1, 2] > df[turn-1, 1]){
+      df[turn, 2] <- df[turn-1, 2] - 1
+    }
+    # agent_specs moves closer to project_specs if agent_specs is smaller
+    if(df[turn-1, 2] < df[turn-1, 2]){
+      df[turn-1, 2] <- df[turn-1, 2] + 1
+    }
+  }
+  
+  # Function returns changed agent_specs and sprint_turn
+  return(df)
+}
+
+```
+
+
+## Work() function 
+
+The Work() function simulates the agents working on the project. It is used in all conditions. 
+
+- colab_prob = the defaoult probablility of a sucessful collaboration (ie. not modefied by mental health yet)
+- array = array containing information about agents
+- turn = current turn in the model (which row in the array should the function)
+- beta = the moderator of the effect of the effort/rewards ratio on mental health
+- odds = odds ratio detailing the increase in strain
+- s_beta = the moderator of the effect of strain on sucessrate
+
+```{r}
+Work <- function(colab_prob, arrai, turn, beta, odds, s_beta) {
+  
+  # For loop repeating for each participant
+  for(i in 1:dim(arrai)[3]){
+    
+    # Defining the probability of a sucessful collaboration
+    s_prob <- arrai[turn,7,i] + (inv.logit(arrai[turn-1,5,i]) * s_beta)
+
+    # Determining if the collaboration is sucessful
+    colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
+    
+    # Simulating collaboration
+    if(colab == "sucess"){
+      eff <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
+      rew <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
+      arrai[turn,1,i] <- 1
+      arrai[turn,2,i] <- arrai[turn-1,2,i] * eff
+      arrai[turn,3,i] <- arrai[turn-1,3,i] * rew
+      arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
+      strain <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * log(odds))
+      arrai[turn,5,i] <- rnorm(1, mean = strain, sd = 0.01)
+    } else {
+      eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
+      rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
+      arrai[turn,2,i] <- arrai[turn-1,2,i] * eff
+      arrai[turn,3,i] <- arrai[turn-1,3,i] * rew
+      arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
+      strain <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * log(odds))
+      arrai[turn,5,i] <- rnorm(1, mean = strain, sd = 0.01)
+    }
+  }
+  
+  # Retuning the modifyed dataframe
+  return(arrai)
+}
+
+```
+
+
+## Simulation() function
+
+The Simulation() function gathers all the Work(), Sprint() and Specs() functions to comute the agent based model. 
+
+- n_turns = the number of turns simulated 
+- n_agent = the number of agents
+- start_prob = the initial sucessrate (unmodulated by mental_health) of all the agents
+- scrum = Scrum condition or not Scrum condition
+- specs = specifying if the scope is changing or static
+- threshold = the max distance agent_specs can drift from model_specs
+- len = the length of the sprint in turns
+- Penalty = the size of the penalty for project breakdown - a percentege of reduction in reward for each agent
+- no = the probability of no change in scope 
+- pos = the probability of a positive change in scope
+- neg = the probability of a negative change in scope
+- beta = the moderator of the effect of the effort/rewards ratio on mental health
+- odds = odds ratio detailing the increase in strain
+- s_beta = the moderator of the effect of strain on sucessrate
+
+```{r}
+Simulation <- function(n_turns, n_agent, start_prob, threshold, len, penalty, no, pos, neg, beta, odds, s_beta){
+  
+  # Making an array containing information about all agents
+  agents <- array(0,c(n_turns,7,n_agent))
+  dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "ratio", "strain", "baseline", "sucess_rate")
+  # Setting baseline for strain
+  for(i in 1:n_agent){
+    agents[,6,i] <- rnorm(1, mean=-1.386294, sd=0.01)
+  }
+  # Setting sucessrate for each agent
+  for(i in 1:n_agent){
+    agents[,7,i] <- rnorm(1, mean=0.50, sd=0.10)
+  }
+  # Making a dataframe with additional variables
+  values <- tibble("project_specs" = rep.int(0,n_turns), 
+                   "agent_specs" = rep.int(0,n_turns), 
+                   "sprint_turn" = rep_len(1:len,n_turns), 
+                   "breakdown" = rep.int(0,n_turns))
+  
+  #---> For the first round 
+  # This happes in the scrum condition
+  if(scrum == TRUE){
+    # first turn in a sprint does is not sucessful
+    # Calculating strain and effort/reward
+    for(i in 1:n_agent){
+      eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
+      rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
+      agents[1,2,i] <- 1 * eff
+      agents[1,3,i] <- 1 * rew
+      agents[1, 4, i] <- log(agents[1, 2, i]/agents[1, 3, i]) # calculating the ER ratio
+      strain <- agents[1,6,i] + (beta * agents[1, 4, i] * log(odds))
+      agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
+    }
+  } else { # This happens in th non-scrum condition 
+      for(i in 1:n_agent){
+        # Defining the probability of a sucessful collaboration for the first turn
+        s_prob <- agents[1,7,i]
+        # Determining if the collaboration is sucessful
+        colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
+        # Simulating collaboration
+        if(colab == "sucess"){
+          eff <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
+          rew <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
+          agents[1,1,i] <- 1
+          agents[1,2,i] <- 1 * eff
+          agents[1,3,i] <- 1 * rew
+          agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
+          strain <- agents[1,6,i] + (beta * agents[1, 4, i] * log(odds))
+          agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
+        } else {
+          eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.01)
+          rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.01)
+          agents[1,2,i] <- 1 * eff
+          agents[1, 3, i] <- 1 * rew
+          agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
+          strain <- agents[1,6,i] + (beta * agents[1, 4, i] * Log(odds))
+          agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
+        }
+        
+      }
+  }
+
+  # This happens in the changing specs condition 
+  if(specs == "changing"){
+    # Deciding if model_specs should be changed
+    spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(no, pos, neg))
+    # if spec_chance is positive, 1 is added to model_specs
+    if(spec_change == "positive"){
+      values[1,1] <- 1
+    }
+    # if spec_chance is negative, 1 is subtracted from model_specs
+    if(spec_change == "negative"){
+      values[1,1] <- (- 1)
+    }
+  }
+  
+  #----> For loop for repeating repeating the same procedure for the rest of the turns
+  for(i in 2:n_turns){
+    # work is siulated and agent_frame is updated
+    agents <- Work(start_prob, agents, i, beta, odds, s_beta)
+    
+    # Sprints are simulated and values are udpated
+    values <- Sprint(len, values, i)
+    
+    # Spacs are changed and both agent_frame and values are updated
+    both <- Specs(threshold, agents, values, i, penalty, no, pos, neg, beta, odds)
+    values <- both[[1]]
+    agents <- both[[2]]
+    
+  }
+  
+  # Retun an array with information about participants 
+  return(list(values, agents))
+}
+
+```
+
+## Use this code to run the model!
+The model has 4 different conditions - each one is run with it's own iteration of the Simulation function.
+
+```{r}
 # testing Simulation 
 twodf <- Simulation(n_turns = 100,
                     n_agent = 5,
                     start_prob = 0.50,
-                    scrum = TRUE,
-                    specs = "static",
                     threshold = 2,
-                    len = 5,
+                    len = 5, # the parameter that decides the interval condition.
                     penalty = 0.05,
-                    no = 0.6,
-                    pos = 0.2,
-                    neg = 0.2,
+                    no = 0.6, #---|These three parameters decide the scope condition.
+                    pos = 0.2, #--|
+                    neg = 0.2, #--|
                     beta = 0.5,
                     odds = 1.49,
-                    s_beta = 0)
+                    s_beta = -0.5)
+
+# To check if I get a result
 twodf[[1]]
 twodf[[2]][,,5]
 
+```
 
+## Plots
+The code for the plots used in the prose for the exam assigment can be found here: 
 
+```{r}
 # Plot of the sumilation 
 df <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 5, 1], "agent_2" = twodf[[2]][, 5, 2], "agent_3" = twodf[[2]][, 5, 3], "agent_4" = twodf[[2]][, 5, 4], "agent_5" = twodf[[2]][, 5, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
@@ -58,13 +319,13 @@ ggplot(df_wide, aes(x = turn, y = strain, color = agent)) + geom_line(size = 1) 
 
 # Plot of the sumilation in percenteges 
 # Function fro conversion that I might not need:
-logit2prob <- function(logit){
+inv.logit <- function(logit){
   odds <- exp(logit)
   prob <- odds / (1 + odds)
   return(prob)
 }
 # making dataframe 
-df_p <- tibble("turn" = 1:100,"agent_1" = logit2prob(twodf[[2]][, 5, 1]), "agent_2" = logit2prob(twodf[[2]][, 5, 2]), "agent_3" = logit2prob(twodf[[2]][, 5, 3]), "agent_4" = logit2prob(twodf[[2]][, 5, 4]), "agent_5" = logit2prob(twodf[[2]][, 5, 5]), "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+df_p <- tibble("turn" = 1:100,"agent_1" = inv.logit(twodf[[2]][, 5, 1]), "agent_2" = inv.logit(twodf[[2]][, 5, 2]), "agent_3" = inv.logit(twodf[[2]][, 5, 3]), "agent_4" = inv.logit(twodf[[2]][, 5, 4]), "agent_5" = inv.logit(twodf[[2]][, 5, 5]), "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
 df_wide_p <- gather(df_p, key = "agent", value = "strain", agent_1:agent_5)
 
@@ -109,370 +370,21 @@ ggplot(df_wide_num, aes(x = turn, y = difference, color = agent)) + geom_line(si
 inv.logit(0.20)
 ```
 
-## Simulation() function
-
-The Simulation() function gathers all the Work(), Sprint() and Specs() functions to comute the agent based model. 
-
-- n_turns = the number of turns simulated 
-- n_agent = the number of agents
-- start_prob = the initial sucessrate (unmodulated by mental_health) of all the agents
-- scrum = Scrum condition or not Scrum condition
-- specs = specifying if the scope is changing or static
-- threshold = the max distance agent_specs can drift from model_specs
-- len = the length of the sprint in turns
-- Penalty = the size of the penalty for project breakdown - a percentege of reduction in reward for each agent
-- no = the probability of no change in scope 
-- pos = the probability of a positive change in scope
-- neg = the probability of a negative change in scope
-
-```{r}
-Simulation <- function(n_turns, n_agent, start_prob, scrum = TRUE, specs = "changing", threshold, len, penalty, no, pos, neg, beta, odds, s_beta){
-  
-  # Making an array containing information about all agents
-  agents <- array(0,c(n_turns,7,n_agent))
-  dimnames(agents)[[2]] <- c("sucess", "effort", "reward", "ratio", "strain", "baseline", "sucess_rate")
-  # Setting baseline for strain
-  for(i in 1:n_agent){
-    agents[,6,i] <- rnorm(1, mean=0.549834, sd=0.01)
-  }
-  # Setting sucessrate for each agent
-  for(i in 1:n_agent){
-    agents[,7,i] <- rnorm(1, mean=0.50, sd=0.10)
-  }
-  # Making a dataframe with additional variables
-  values <- tibble("project_specs" = rep.int(0,n_turns), 
-                   "agent_specs" = rep.int(0,n_turns), 
-                   "sprint_turn" = rep_len(1:len,n_turns), 
-                   "breakdown" = rep.int(0,n_turns))
-  
-  #---> For the first round 
-  # This happes in the scrum condition
-  if(scrum == TRUE){
-    # first turn in a sprint does is not sucessful
-    # Calculating strain and effort/reward
-    for(i in 1:n_agent){
-      eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
-      rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
-      agents[1,2,i] <- 1 * eff
-      agents[1,3,i] <- 1 * rew
-      agents[1, 4, i] <- log(agents[1, 2, i]/agents[1, 3, i]) # calculating the ER ratio
-      strain <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
-      agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
-    }
-  } else { # This happens in th non-scrum condition 
-      for(i in 1:n_agent){
-        # Defining the probability of a sucessful collaboration for the first turn
-        s_prob <- agents[1,7,i]
-        # Determining if the collaboration is sucessful
-        colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
-        # Simulating collaboration
-        if(colab == "sucess"){
-          eff <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
-          rew <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
-          agents[1,1,i] <- 1
-          agents[1,2,i] <- 1 * eff
-          agents[1,3,i] <- 1 * rew
-          agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
-          strain <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
-          agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
-        } else {
-          eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.01)
-          rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.01)
-          agents[1,2,i] <- 1 * eff
-          agents[1, 3, i] <- 1 * rew
-          agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
-          strain <- agents[1,6,i] + (beta * agents[1, 4, i] * odds)
-          agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
-        }
-        
-      }
-  }
-
-  # This happens in the changing specs condition 
-  if(specs == "changing"){
-    # Deciding if model_specs should be changed
-    spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(no, pos, neg))
-    # if spec_chance is positive, 1 is added to model_specs
-    if(spec_change == "positive"){
-      values[1,1] <- 1
-    }
-    # if spec_chance is negative, 1 is subtracted from model_specs
-    if(spec_change == "negative"){
-      values[1,1] <- (- 1)
-    }
-  }
-  
-  #----> For loop for repeating repeating the same procedure for the rest of the turns
-  for(i in 2:n_turns){
-    # work is siulated and agent_frame is updated
-    agents <- Work(start_prob, agents, i, beta, odds, s_beta)
-    
-    # Sprints are simulated and values are udpated
-    if(scrum == TRUE){
-      values <- Sprint(len, values, i)
-    }
-    
-    # Spacs are changed and both agent_frame and values are updated
-    if(specs == "changing"){
-      both <- Specs(threshold, agents, values, i, penalty, no, pos, neg, beta, odds)
-      values <- both[[1]]
-      agents <- both[[2]]
-    }
-  }
-  
-  # Retun an array with information about participants 
-  return(list(values, agents))
-}
-
-```
-
-
-
-## Work() function 
-
-The Work() function simulates the agents working on the project. It is used in all conditions. 
-
-- colab_prob = the defaoult probablility of a sucessful collaboration (ie. not modefied by mental health yet)
-- array = array containing information about agents
-- turn = current turn in the model (which row in the array should the function)
-
-```{r}
-Work <- function(colab_prob, arrai, turn, beta, odds, s_beta) {
-  
-  # For loop repeating for each participant
-  for(i in 1:dim(arrai)[3]){
-    
-    # Defining the probability of a sucessful collaboration
-    s_prob <- arrai[turn,7,i] + (logit2prob(arrai[turn-1,5,i]) * s_beta)
-
-    # Determining if the collaboration is sucessful
-    colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
-    
-    # Simulating collaboration
-    if(colab == "sucess"){
-      eff <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
-      rew <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
-      arrai[turn,1,i] <- 1
-      arrai[turn,2,i] <- arrai[turn-1,2,i] * eff
-      arrai[turn,3,i] <- arrai[turn-1,3,i] * rew
-      arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
-      strain <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
-      arrai[turn,5,i] <- rnorm(1, mean = strain, sd = 0.01)
-    } else {
-      eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
-      rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
-      arrai[turn,2,i] <- arrai[turn-1,2,i] * eff
-      arrai[turn,3,i] <- arrai[turn-1,3,i] * rew
-      arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
-      strain <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * odds)
-      arrai[turn,5,i] <- rnorm(1, mean = strain, sd = 0.01)
-    }
-  }
-  
-  # Retuning the modifyed dataframe
-  return(arrai)
-}
-
-```
-
-
-## Sprint() Function
-
-Sprint() keeps track of the sprints and changes the model specifications in the Complex condition. It is only used in the Scrum conditions. It should happen at the end of a loop. 
-
-- len = the length of the sprint in turns
-- df = dataframe with information not connected to a specific agent
-- turn = current turn in the model (which row in the array should the function)
-
-```{r}
-Sprint <- function(len, df, turn){
-  
-  # This happens at the last turn of the sprint
-  if(df[turn, 3] == len){
-    # agent_specs moves closer to project_specs if agent_specs is greater  
-    if(df[turn-1, 2] > df[turn-1, 1]){
-      df[turn, 2] <- df[turn-1, 2] - 1
-    }
-    # agent_specs moves closer to project_specs if agent_specs is smaller
-    if(df[turn-1, 2] < df[turn-1, 2]){
-      df[turn-1, 2] <- df[turn-1, 2] + 1
-    }
-  }
-  
-  # Function returns changed agent_specs and sprint_turn
-  return(df)
-}
-
-```
-
-## Specs() function
-
-Specs() checks for drift in specifications and imposes a penalty on the simulation if the drift is over a certain threshold. It also chnages the specifications.
-
-- threshold = the max distance agent_specs can drift from model_specs
-- array = array containing information about agents
-- df = dataframe with information not connected to a specific agent
-- turn = current turn in the model (which row in the array should the function)
-- no = the probability of no change in scope 
-- pos = the probability of a positive change in scope
-- neg = the probability of a negative change in scope
-- Penalty = the size of the penalty for project breakdown - a percentege of reduction in reward for each agent
-
-```{r}
-Specs <- function(threshold, arrai, df, turn, penalty, no, pos, neg, beta, odds){
-  # Checking if agent_specs has drifted
-  spec_drift <- abs(df[turn-1,1] - df[turn-1,2])
-  # This happens if agent_specs has drifted
-  if(spec_drift >= threshold){
-    # Penalty
-    df[turn, 4] <- 1
-    # ensuring that no reward score goes below 1 and calulating strain with penalty
-    for(i in 1:dim(arrai)[3]){
-      arrai[turn,3,i] <- arrai[turn-1,3,i] - abs((arrai[turn-1, 3,i]*penalty))
-      if(arrai[turn, 3, i] < 1){
-        arrai[turn, 3, i] <- 1
-      }
-      arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
-      arrai[turn,5,i] <- arrai[turn-1,5,i] + (beta * arrai[turn,4,i] * odds)
-    }
-    # Agent_specs are adapted to model_specs  
-    df[turn, 2] <- df[turn-1, 1]
-  }
-  
-  # Deciding if model_specs should be changed
-  spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(no, pos, neg))
-  # if spec_chance is positive, 1 is added to model_specs
-  if(spec_change == "positive"){
-    df[turn, 1] <- df[turn-1, 1] + 1
-  }
-  # if spec_chance is negative, 1 is subtracted from model_specs
-  if(spec_change == "negative"){
-    df[turn, 1] <- df[turn-1, 1] - 1
-  }
-  return(list(df, arrai))
-}
-
-```
-
-
-## Issues (notes for myself):
-
-Right now the penalty for project breakdown is calculated individually, but maybe it shouldn't be? 
-
-- (Solve today if you ahve time) ALso rethink why the specs variable needs to go both ways and not just one. 
-
-Individual sucess rates anyone? 
-
-- (Solve today if you have time and brain-power for doing anything non-robotic) Should sprint or specs come first?
-
-- (Make some if you have more time) plots. You should try to make some more plots. More plots is always good. 
-
-## Extra code for de-bugging
-
-```{r}
- # Making an array containing information about all agents
-  agg <- array(0,c(10,4,3))
-  dimnames(agg)[[2]] <- c("sucess", "effort", "reward", "strain")
-
-  # Making a dataframe with additional variables
-  val <- tibble("project_specs" = rep.int(0,10), 
-                "agent_specs" = rep.int(0,10), 
-                "sprint_turn" = rep_len(1:10,10), 
-                "break" = rep.int(0,10))
-
-obj <- Specs(2, agg, val, 2, 0.1, 1, 0, 0)
-obj[[1]]
-
-1.350841 - abs((1.350841*0.10))
-
-```
-
-
-## Including Plots
-
-If I want to include nice plots withing this markdown onece I have some nice resuts to plot
-
-```{r pressure, echo=FALSE}
-
-# First I would have to make a version of the agent array that ggplot can read. 
-
-df <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 4, 1], "agent_2" = twodf[[2]][, 4, 2], "agent_3" = twodf[[2]][, 4, 3], "agent_4" = twodf[[2]][, 4, 4], "agent_5" = twodf[[2]][, 4, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
-# This should probably be done in a for-loop if my dataset get big enough. 
-# Breakdown is a bit tricky for some reason
-
-# Then I should change the dataframe from  wide to long format
-p_load(tidyr) # Need tidyr for that
-df_wide <- gather(df, key = "agent", value = "mental_health", agent_1:agent_5)
-
-# Now I can make the ggplot 
-ggplot(df_wide, aes(x = turn, y = mental_health, color = agent)) + geom_line() + geom_point(aes(color = "breakdown"), y = 0.33, data = df_wide %>% filter(breakdown == 1))
-
-# doing another one that takes a bit longer but is also more professional looking
-# To do that i have to make a separate dataframe for breakdowns
-scrum <- ggplot(df_wide, aes(x = turn, y = mental_health, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
-
-noscrum <- ggplot(df_wide, aes(x = turn, y = mental_health, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
-
-scrum;noscrum
-
-```
-
-## Playing around with logistic regressions: 
-```{r}
-# simulating some data to use
-
-?rnorm()
-?rbinom()
-
-sim <- tibble("y" = rbinom(100, 1, 0.5), "x" = rnorm(100, 5, 1))
-
-sim_mod <- glm(y ~ x, family = "binomial", data = sim)
-summary(sim_mod)
-
-predict(sim_mod)
-
-# Ok , this doesn't seem to be working. 
-
-
-# Let's try a more direct approach - do i need the logarithmic regression if I already have the odds ratio? 
-# But skrew odds - lets do probabilities instead!
-1.75/(1 + 1.75)
-
-
-sqrt(1.75)
-
-exp(1.322876)
-
-
-# Okay, so, what about making this completely arbitraty? I'll make a linear regression (because skrew logistic regression! dichotomizing mental health is arbitrary anyway!)
-# Speaking of arbitrary, menatal health is now an ordinal variable from 1 - 10. the higher the varibale, the more strain.
-# The effort reward imbalance is a logtransformed ratio of effort and reward.
-# Okay, let's try something. 
-
-#This is a matrix to help me understand the ratio. 
-r1 = c(log(1/1), log(2/1), log(3/1), log(4/1), log(5/1))
-r2 = c(log(1/2), log(2/2), log(3/2), log(4/2), log(5/2))
-r3 = c(log(1/3), log(2/3), log(3/3), log(4/3), log(5/3))
-r4 = c(log(1/4), log(2/4), log(3/4), log(4/4), log(5/4))
-r5 = c(log(1/5), log(2/5), log(3/5), log(4/5), log(5/5))
-ex_ratio <- tibble(r1, r2, r3, r4, r5) # That helped
-
-# Simulating some data because I am not smart enough to do otherwise. 
-
-intercept <- 0 # as it is now, it is impossible to get more reward than effort (have to l)
-estimate <- 3 # random
-
-MH <- intercept + estimate*log(5/4)
-MH
-
-# Toy example using the advice that ricardo gave me
-logodds <- log(1.75)
-ratio <- log(4/5)
-beta <- 1
-V_1 <- 1
-
-# This is the official calculation
-strain_2 <- strain_1 + beta * (ratio * logodds) 
-
-
-```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
