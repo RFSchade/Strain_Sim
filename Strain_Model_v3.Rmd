@@ -195,61 +195,27 @@ Simulation <- function(n_turns, n_agent, start_prob, threshold, len, penalty, no
                    "sprint_turn" = rep_len(1:len,n_turns), 
                    "breakdown" = rep.int(0,n_turns))
   
-  #---> For the first round 
-  # This happes in the scrum condition
-  if(scrum == TRUE){
-    # first turn in a sprint does is not sucessful
-    # Calculating strain and effort/reward
-    for(i in 1:n_agent){
-      eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
-      rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
-      agents[1,2,i] <- 1 * eff
-      agents[1,3,i] <- 1 * rew
-      agents[1, 4, i] <- log(agents[1, 2, i]/agents[1, 3, i]) # calculating the ER ratio
-      strain <- agents[1,6,i] + (beta * agents[1, 4, i] * log(odds))
-      agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
-    }
-  } else { # This happens in th non-scrum condition 
-      for(i in 1:n_agent){
-        # Defining the probability of a sucessful collaboration for the first turn
-        s_prob <- agents[1,7,i]
-        # Determining if the collaboration is sucessful
-        colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
-        # Simulating collaboration
-        if(colab == "sucess"){
-          eff <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
-          rew <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
-          agents[1,1,i] <- 1
-          agents[1,2,i] <- 1 * eff
-          agents[1,3,i] <- 1 * rew
-          agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
-          strain <- agents[1,6,i] + (beta * agents[1, 4, i] * log(odds))
-          agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
-        } else {
-          eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.01)
-          rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.01)
-          agents[1,2,i] <- 1 * eff
-          agents[1, 3, i] <- 1 * rew
-          agents[1,4,i] <- log(agents[1,2,i]/agents[1,3,i])
-          strain <- agents[1,6,i] + (beta * agents[1, 4, i] * Log(odds))
-          agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
-        }
-        
-      }
+  #---> For the first turn 
+  # The first turn is alway the first turn in an interval.
+  for(i in 1:n_agent){
+    eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
+    rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
+    agents[1,2,i] <- 1 * eff
+    agents[1,3,i] <- 1 * rew
+    agents[1, 4, i] <- log(agents[1, 2, i]/agents[1, 3, i]) # calculating the ER ratio
+    strain <- agents[1,6,i] + (beta * agents[1, 4, i] * log(odds))
+    agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
   }
 
-  # This happens in the changing specs condition 
-  if(specs == "changing"){
-    # Deciding if model_specs should be changed
-    spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(no, pos, neg))
-    # if spec_chance is positive, 1 is added to model_specs
-    if(spec_change == "positive"){
-      values[1,1] <- 1
-    }
-    # if spec_chance is negative, 1 is subtracted from model_specs
-    if(spec_change == "negative"){
-      values[1,1] <- (- 1)
-    }
+  # Deciding if model_specs should be changed
+  spec_change <- sample(c("none", "positive", "negative"), 1, prob = c(no, pos, neg))
+  # if spec_chance is positive, 1 is added to model_specs
+  if(spec_change == "positive"){
+    values[1,1] <- 1
+  }
+  # if spec_chance is negative, 1 is subtracted from model_specs
+  if(spec_change == "negative"){
+    values[1,1] <- (- 1)
   }
   
   #----> For loop for repeating repeating the same procedure for the rest of the turns
@@ -273,16 +239,59 @@ Simulation <- function(n_turns, n_agent, start_prob, threshold, len, penalty, no
 
 ```
 
+
 ## Use this code to run the model!
 The model has 4 different conditions - each one is run with it's own iteration of the Simulation function.
 
 ```{r}
-# testing Simulation 
-twodf <- Simulation(n_turns = 100,
+# Condition 1: Short intervals, low rate of change in scope
+cond1 <- Simulation(n_turns = 100,
                     n_agent = 5,
                     start_prob = 0.50,
                     threshold = 2,
                     len = 5, # the parameter that decides the interval condition.
+                    penalty = 0.05,
+                    no = 0.8, #---|These three parameters decide the scope condition.
+                    pos = 0.1, #--|
+                    neg = 0.1, #--|
+                    beta = 0.5,
+                    odds = 1.49,
+                    s_beta = -0.5)
+
+# Condition 2: Short intervals, high rate of change in scope
+cond2 <- Simulation(n_turns = 100,
+                    n_agent = 5,
+                    start_prob = 0.50,
+                    threshold = 2,
+                    len = 5, # the parameter that decides the interval condition.
+                    penalty = 0.05,
+                    no = 0.6, #---|These three parameters decide the scope condition.
+                    pos = 0.2, #--|
+                    neg = 0.2, #--|
+                    beta = 0.5,
+                    odds = 1.49,
+                    s_beta = -0.5)
+
+# Condition 3: long intervals, low rate of change in scope
+cond3 <- Simulation(n_turns = 100,
+                    n_agent = 5,
+                    start_prob = 0.50,
+                    threshold = 2,
+                    len = 20, # the parameter that decides the interval condition.
+                    penalty = 0.05,
+                    no = 0.8, #---|These three parameters decide the scope condition.
+                    pos = 0.1, #--|
+                    neg = 0.1, #--|
+                    beta = 0.5,
+                    odds = 1.49,
+                    s_beta = -0.5)
+
+# Condition 4: long intervals, high rate of change in scope
+cond4 <- Simulation(n_turns = 100,
+                    n_agent = 5,
+                    start_prob = 0.50,
+                    threshold = 2,
+                    len = 20, # the parameter that decides the interval condition.
                     penalty = 0.05,
                     no = 0.6, #---|These three parameters decide the scope condition.
                     pos = 0.2, #--|
@@ -296,6 +305,7 @@ twodf[[1]]
 twodf[[2]][,,5]
 
 ```
+
 
 ## Plots
 The code for the plots used in the prose for the exam assigment can be found here: 
