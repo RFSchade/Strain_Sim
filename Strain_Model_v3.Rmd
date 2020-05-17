@@ -24,7 +24,7 @@ The code to run the model can be found in the second-to-last code chunk.
 Specs() checks for drift in specifications and imposes a penalty on the simulation if the drift is over a certain threshold. It also chnages the specifications.
 
 - threshold = the max distance agent_specs can drift from model_specs
-- array = array containing information about agents
+- arrai = array containing information about agents
 - df = dataframe with information not connected to a specific agent
 - turn = current turn in the model (which row in the array should the function)
 - Penalty = the size of the penalty for project breakdown - a percentege of reduction in reward for each agent
@@ -109,8 +109,7 @@ Sprint <- function(len, df, turn){
 
 The Work() function simulates the agents working on the project. It is used in all conditions. 
 
-- colab_prob = the defaoult probablility of a sucessful collaboration (ie. not modefied by mental health yet)
-- array = array containing information about agents
+- arrai = array containing information about agents
 - turn = current turn in the model (which row in the array should the function)
 - beta = the moderator of the effect of the effort/rewards ratio on mental health
 - odds = odds ratio detailing the increase in strain
@@ -162,9 +161,6 @@ The Simulation() function gathers all the Work(), Sprint() and Specs() functions
 
 - n_turns = the number of turns simulated 
 - n_agent = the number of agents
-- start_prob = the initial sucessrate (unmodulated by mental_health) of all the agents
-- scrum = Scrum condition or not Scrum condition
-- specs = specifying if the scope is changing or static
 - threshold = the max distance agent_specs can drift from model_specs
 - len = the length of the sprint in turns
 - Penalty = the size of the penalty for project breakdown - a percentege of reduction in reward for each agent
