@@ -245,7 +245,7 @@ cond1 <- Simulation(n_turns = 1000,
                     n_agent = 100,
                     threshold = 5,
                     len = 5, # the parameter that decides the interval condition.
-                    penalty = 0.1,
+                    penalty = 0.05,
                     no = 0.8, #---|These three parameters decide the scope condition.
                     pos = 0.1, #--|
                     neg = 0.1, #--|
@@ -258,7 +258,7 @@ cond2 <- Simulation(n_turns = 1000,
                     n_agent = 100,
                     threshold = 5,
                     len = 5, # the parameter that decides the interval condition.
-                    penalty = 0.1,
+                    penalty = 0.05,
                     no = 0.6, #---|These three parameters decide the scope condition.
                     pos = 0.2, #--|
                     neg = 0.2, #--|
@@ -271,7 +271,7 @@ cond3 <- Simulation(n_turns = 1000,
                     n_agent = 100,
                     threshold = 3,
                     len = 20, # the parameter that decides the interval condition.
-                    penalty = 0.1,
+                    penalty = 0.05,
                     no = 0.8, #---|These three parameters decide the scope condition.
                     pos = 0.1, #--|
                     neg = 0.1, #--|
@@ -284,7 +284,7 @@ cond4 <- Simulation(n_turns = 1000,
                     n_agent = 100,
                     threshold = 3,
                     len = 20, # the parameter that decides the interval condition.
-                    penalty = 0.1,
+                    penalty = 0.05,
                     no = 0.6, #---|These three parameters decide the scope condition.
                     pos = 0.2, #--|
                     neg = 0.2, #--|
@@ -473,7 +473,18 @@ all_strain_wide$condition <- as.factor(all_strain_wide$condition)
 bar_strain <- ggplot(all_strain_wide, aes(x = condition, y = strain, fill = "red")) + geom_bar(stat = "summary", fun.y=mean) + geom_errorbar(stat = "summary", fun.data=mean_cl_boot, width = 0.2) + labs(y = "Strain", x = "Condition", title = "strain")  + theme(plot.title = element_text(hjust = 0.5)) + guides(fill=FALSE)
 bar_strain
 
-# Bar-plot,breakdowns  
+# Bar-plot, last turn
+
+all_strain_last <- tibble("c1" = inv.logit(cond1[[2]][1000,5,]), "c2" = inv.logit(cond2[[2]][1000,5,]), "c3" = inv.logit(cond3[[2]][1000,5,]), "c4" = inv.logit(cond4[[2]][1000,5,]))
+
+all_strain_last_wide <- gather(all_strain_last, key = "condition", value = "strain", c1, c2, c3, c4)
+
+all_strain_last_wide$condition <- as.factor(all_strain_last_wide$condition)
+
+bar_strain_last <- ggplot(all_strain_last_wide, aes(x = condition, y = strain, fill = "red")) + geom_bar(stat = "summary", fun.y=mean) + geom_errorbar(stat = "summary", fun.data=mean_cl_boot, width = 0.2) + labs(y = "Strain", x = "Condition", title = "strain")  + theme(plot.title = element_text(hjust = 0.5)) + guides(fill=FALSE)
+bar_strain_last
+
+# Bar-plot, breakdowns  
 
 all_break <- tibble("c1" = cond1[[1]][,4]$breakdown, "c2" = cond2[[1]][,4]$breakdown, "c3" = cond3[[1]][,4]$breakdown, "c4" = cond4[[1]][,4]$breakdown)
 
@@ -484,4 +495,6 @@ bar_break
 
 ```
 
-
+```{r}
+# More testing 
+```
