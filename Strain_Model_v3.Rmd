@@ -117,16 +117,16 @@ The Work() function simulates the agents working on the project. It is used in a
 - s_beta = the moderator of the effect of strain on sucessrate
 
 ```{r}
-Work <- function(colab_prob, arrai, turn, beta, odds, s_beta) {
+Work <- function(arrai, turn, beta, odds, s_beta, n_agent) {
   
   # For loop repeating for each participant
-  for(i in 1:dim(arrai)[3]){
+  for(i in 1:n_agent){
     
     # Defining the probability of a sucessful collaboration
     s_prob <- arrai[turn,7,i] + (inv.logit(arrai[turn-1,5,i]) * s_beta)
 
     # Determining if the collaboration is sucessful
-    colab <- sample(c("sucess", "fail"), 1, prob = c(s_prob,(1-s_prob)))
+    colab <- sample(c("sucess", "fail"), 1, prob = c(abs(s_prob),1-abs(s_prob)))
     
     # Simulating collaboration
     if(colab == "sucess"){
@@ -137,7 +137,7 @@ Work <- function(colab_prob, arrai, turn, beta, odds, s_beta) {
       arrai[turn,3,i] <- arrai[turn-1,3,i] * rew
       arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
       strain <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * log(odds))
-      arrai[turn,5,i] <- rnorm(1, mean = strain, sd = 0.01)
+      arrai[turn,5,i] <- strain
     } else {
       eff <- rtruncnorm(1, a=1.05, b=1.10, mean = 1.07, sd = 0.02)
       rew <- rtruncnorm(1, a=1, b=1.05, mean = 1.04, sd = 0.02)
@@ -145,7 +145,7 @@ Work <- function(colab_prob, arrai, turn, beta, odds, s_beta) {
       arrai[turn,3,i] <- arrai[turn-1,3,i] * rew
       arrai[turn,4,i] <- log(arrai[turn,2,i]/arrai[turn,3,i])
       strain <- arrai[turn,6,i] + (beta * arrai[turn,4,i] * log(odds))
-      arrai[turn,5,i] <- rnorm(1, mean = strain, sd = 0.01)
+      arrai[turn,5,i] <- strain
     }
   }
   
@@ -176,7 +176,7 @@ The Simulation() function gathers all the Work(), Sprint() and Specs() functions
 - s_beta = the moderator of the effect of strain on sucessrate
 
 ```{r}
-Simulation <- function(n_turns, n_agent, start_prob, threshold, len, penalty, no, pos, neg, beta, odds, s_beta){
+Simulation <- function(n_turns, n_agent, threshold, len, penalty, no, pos, neg, beta, odds, s_beta){
   
   # Making an array containing information about all agents
   agents <- array(0,c(n_turns,7,n_agent))
@@ -187,7 +187,7 @@ Simulation <- function(n_turns, n_agent, start_prob, threshold, len, penalty, no
   }
   # Setting sucessrate for each agent
   for(i in 1:n_agent){
-    agents[,7,i] <- rnorm(1, mean=0.50, sd=0.10)
+    agents[,7,i] <- rnorm(1, mean=0.60, sd=0.10)
   }
   # Making a dataframe with additional variables
   values <- tibble("project_specs" = rep.int(0,n_turns), 
@@ -204,7 +204,7 @@ Simulation <- function(n_turns, n_agent, start_prob, threshold, len, penalty, no
     agents[1,3,i] <- 1 * rew
     agents[1, 4, i] <- log(agents[1, 2, i]/agents[1, 3, i]) # calculating the ER ratio
     strain <- agents[1,6,i] + (beta * agents[1, 4, i] * log(odds))
-    agents[1, 5, i] <- rnorm(1, mean = strain, sd = 0.01)
+    agents[1, 5, i] <- strain
   }
 
   # Deciding if model_specs should be changed
@@ -221,7 +221,7 @@ Simulation <- function(n_turns, n_agent, start_prob, threshold, len, penalty, no
   #----> For loop for repeating repeating the same procedure for the rest of the turns
   for(i in 2:n_turns){
     # work is siulated and agent_frame is updated
-    agents <- Work(start_prob, agents, i, beta, odds, s_beta)
+    agents <- Work(agents, i, beta, odds, s_beta, n_agent)
     
     # Sprints are simulated and values are udpated
     values <- Sprint(len, values, i)
@@ -245,64 +245,56 @@ The model has 4 different conditions - each one is run with it's own iteration o
 
 ```{r}
 # Condition 1: Short intervals, low rate of change in scope
-cond1 <- Simulation(n_turns = 100,
-                    n_agent = 5,
-                    start_prob = 0.50,
-                    threshold = 2,
+cond1 <- Simulation(n_turns = 1000,
+                    n_agent = 100,
+                    threshold = 5,
                     len = 5, # the parameter that decides the interval condition.
-                    penalty = 0.05,
+                    penalty = 0.1,
                     no = 0.8, #---|These three parameters decide the scope condition.
                     pos = 0.1, #--|
                     neg = 0.1, #--|
                     beta = 0.5,
                     odds = 1.49,
-                    s_beta = -0.5)
+                    s_beta = -0.1)
 
 # Condition 2: Short intervals, high rate of change in scope
-cond2 <- Simulation(n_turns = 100,
-                    n_agent = 5,
-                    start_prob = 0.50,
-                    threshold = 2,
+cond2 <- Simulation(n_turns = 1000,
+                    n_agent = 100,
+                    threshold = 5,
                     len = 5, # the parameter that decides the interval condition.
-                    penalty = 0.05,
+                    penalty = 0.1,
                     no = 0.6, #---|These three parameters decide the scope condition.
                     pos = 0.2, #--|
                     neg = 0.2, #--|
                     beta = 0.5,
                     odds = 1.49,
-                    s_beta = -0.5)
+                    s_beta = -0.1)
 
 # Condition 3: long intervals, low rate of change in scope
-cond3 <- Simulation(n_turns = 100,
-                    n_agent = 5,
-                    start_prob = 0.50,
-                    threshold = 2,
+cond3 <- Simulation(n_turns = 1000,
+                    n_agent = 100,
+                    threshold = 3,
                     len = 20, # the parameter that decides the interval condition.
-                    penalty = 0.05,
+                    penalty = 0.1,
                     no = 0.8, #---|These three parameters decide the scope condition.
                     pos = 0.1, #--|
                     neg = 0.1, #--|
                     beta = 0.5,
                     odds = 1.49,
-                    s_beta = -0.5)
+                    s_beta = -0.1)
 
 # Condition 4: long intervals, high rate of change in scope
-cond4 <- Simulation(n_turns = 100,
-                    n_agent = 5,
-                    start_prob = 0.50,
-                    threshold = 2,
+cond4 <- Simulation(n_turns = 1000,
+                    n_agent = 100,
+                    threshold = 3,
                     len = 20, # the parameter that decides the interval condition.
-                    penalty = 0.05,
+                    penalty = 0.1,
                     no = 0.6, #---|These three parameters decide the scope condition.
                     pos = 0.2, #--|
                     neg = 0.2, #--|
                     beta = 0.5,
                     odds = 1.49,
-                    s_beta = -0.5)
-
-# To check if I get a result
-twodf[[1]]
-twodf[[2]][,,5]
+                    s_beta = -0.1)
 
 ```
 
@@ -311,53 +303,157 @@ twodf[[2]][,,5]
 The code for the plots used in the prose for the exam assigment can be found here: 
 
 ```{r}
-# Plot of the sumilation 
-df <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 5, 1], "agent_2" = twodf[[2]][, 5, 2], "agent_3" = twodf[[2]][, 5, 3], "agent_4" = twodf[[2]][, 5, 4], "agent_5" = twodf[[2]][, 5, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+# Time series plot, strain in probabilities, condition 1
+df1 <- tibble("turn" = 1:1000)
 
-
-#df[,8] <- c(rep(1,5), rep(2,5), rep(3,5), rep(4,5), rep(5,5), rep(6,5), rep(7,5), rep(8,5), rep(9,5), rep(10,5), rep(11,5), rep(12,5), rep(13,5), rep(14,5), rep(15,5), rep(16,5), rep(17,5), rep(18,5), rep(19,5), rep(20,5))
-
-#df <- df %>% group_by(V8) %>% dplyr::summarise(agent_1 = mean(agent_1), agent_2 = mean(agent_2), agent_3 = mean(agent_3), agent_4 = mean(agent_4), agent_5 = mean(agent_5))
-
-#df <- df %>% slice(rep(1:n(), each = 5))
-#df$turn <- 1:100 
-#df$breakdown <- as.factor(twodf[[1]][,4]$breakdown)
-
-df_wide <- gather(df, key = "agent", value = "strain", agent_1:agent_5)
-
-ggplot(df_wide, aes(x = turn, y = strain, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
-
-# Plot of the sumilation in percenteges 
-# Function fro conversion that I might not need:
-inv.logit <- function(logit){
-  odds <- exp(logit)
-  prob <- odds / (1 + odds)
-  return(prob)
+for(i in 1:100){
+  df1 <- cbind(df1,inv.logit(cond1[[2]][,5,i]))
 }
-# making dataframe 
-df_p <- tibble("turn" = 1:100,"agent_1" = inv.logit(twodf[[2]][, 5, 1]), "agent_2" = inv.logit(twodf[[2]][, 5, 2]), "agent_3" = inv.logit(twodf[[2]][, 5, 3]), "agent_4" = inv.logit(twodf[[2]][, 5, 4]), "agent_5" = inv.logit(twodf[[2]][, 5, 5]), "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
 
-df_wide_p <- gather(df_p, key = "agent", value = "strain", agent_1:agent_5)
+df1$breakdown <- as.factor(cond1[[1]][,4]$breakdown)
 
-ggplot(df_wide_p, aes(x = turn, y = strain, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_p %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+colnames(df1)[2:101] <- 1:100
 
-#----
+df1_wide <- gather(df1, key = "agent", value = "strain", 2:101)
 
-# Plot of the simulation but with ratio instead
-df_r <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 4, 1], "agent_2" = twodf[[2]][, 4, 2], "agent_3" = twodf[[2]][, 4, 3], "agent_4" = twodf[[2]][, 4, 4], "agent_5" = twodf[[2]][, 4, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+df1_wide$agent <- as.factor(df1_wide$agent) 
 
-df_wide_r <- gather(df_r, key = "agent", value = "ratio", agent_1:agent_5)
+cond1_p <- ggplot(df1_wide, aes(x = turn, y = strain, color = agent)) + geom_line(size = 1) + geom_vline(data = df1_wide %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+cond1_p
 
-ggplot(df_wide_r, aes(x = turn, y = ratio, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_r %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+# Time series plot, strain in probabilities, condition 2
+df2 <- tibble("turn" = 1:1000)
 
-# Plot of the simulation but with only reward
-df_re <- tibble("turn" = 1:100,"agent_1" = twodf[[2]][, 3, 1], "agent_2" = twodf[[2]][, 3, 2], "agent_3" = twodf[[2]][, 3, 3], "agent_4" = twodf[[2]][, 3, 4], "agent_5" = twodf[[2]][, 3, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown))
+for(i in 1:100){
+  df2 <- cbind(df2,inv.logit(cond2[[2]][,5,i]))
+}
 
-df_wide_re <- gather(df_re, key = "agent", value = "reward", agent_1:agent_5)
+df2$breakdown <- as.factor(cond2[[1]][,4]$breakdown)
 
-ggplot(df_wide_re, aes(x = turn, y = reward, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_re %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+colnames(df2)[2:101] <- 1:100
 
-ggplot(df_wide_re, aes(x = turn, y = reward)) + geom_line(size = 1) + geom_vline(data = df_wide_re %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+df2_wide <- gather(df2, key = "agent", value = "strain", 2:101)
+
+df2_wide$agent <- as.factor(df2_wide$agent) 
+
+cond2_p <- ggplot(df2_wide, aes(x = turn, y = strain, color = agent)) + geom_line(size = 1) + geom_vline(data = df2_wide %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+cond2_p
+
+# Time series plot, strain in probabilities, condition 3
+df3 <- tibble("turn" = 1:1000)
+
+for(i in 1:100){
+  df3 <- cbind(df3,inv.logit(cond3[[2]][,5,i]))
+}
+
+df3$breakdown <- as.factor(cond3[[1]][,4]$breakdown)
+
+colnames(df3)[2:101] <- 1:100
+
+df3_wide <- gather(df3, key = "agent", value = "strain", 2:101)
+
+df3_wide$agent <- as.factor(df3_wide$agent) 
+
+cond3_p <- ggplot(df3_wide, aes(x = turn, y = strain, color = agent)) + geom_line(size = 1) + geom_vline(data = df3_wide %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+cond3_p
+
+# Time series plot, strain in probabilities, condition 4
+df4 <- tibble("turn" = 1:1000)
+
+for(i in 1:100){
+  df4 <- cbind(df4,inv.logit(cond4[[2]][,5,i]))
+}
+
+df4$breakdown <- as.factor(cond4[[1]][,4]$breakdown)
+
+colnames(df4)[2:101] <- 1:100
+
+df4_wide <- gather(df4, key = "agent", value = "strain", 2:101)
+
+df4_wide$agent <- as.factor(df4_wide$agent) 
+
+cond4_p <- ggplot(df4_wide, aes(x = turn, y = strain, color = agent)) + geom_line(size = 1) + geom_vline(data = df4_wide %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+cond4_p
+
+# Time series plot, difference between effort and reward, condition 1
+df1_ef <- tibble("turn" = 1:1000)
+
+for(i in 1:100){
+  df1_ef <- cbind(df1_ef,cond1[[2]][,2,i])
+}
+
+df1_re <- tibble("turn" = 1:1000)
+
+for(i in 1:100){
+  df1_re <- cbind(df1_re,cond1[[2]][,3,i])
+}
+
+df1_av <- tibble("turn" = 1:1000, "effort" = rowMeans(df1_ef[,2:101]), "reward" = rowMeans(df1_re[,2:101]), "breakdown" = as.factor(cond1[[1]][,4]$breakdown))
+
+df1_wide_av <- gather(df1_av, key = "variable", value = "score", reward, effort)
+
+cond1_av <- ggplot(df1_wide_av, aes(x = turn, y = log(score), color = variable)) + geom_line(size = 1) + geom_vline(data = df1_wide_av %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+cond1_av
+
+# Time series plot, difference between effort and reward, condition 2
+df2_ef <- tibble("turn" = 1:1000)
+
+for(i in 1:100){
+  df2_ef <- cbind(df2_ef,cond2[[2]][,2,i])
+}
+
+df2_re <- tibble("turn" = 1:1000)
+
+for(i in 1:100){
+  df2_re <- cbind(df2_re,cond2[[2]][,3,i])
+}
+
+df2_av <- tibble("turn" = 1:1000, "effort" = rowMeans(df2_ef[,2:101]), "reward" = rowMeans(df2_re[,2:101]), "breakdown" = as.factor(cond2[[1]][,4]$breakdown))
+
+df2_wide_av <- gather(df2_av, key = "variable", value = "score", reward, effort)
+
+cond1_av <- ggplot(df2_wide_av, aes(x = turn, y = log(score), color = variable)) + geom_line(size = 1) + geom_vline(data = df2_wide_av %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+cond1_av
+
+# Time series plot, difference between effort and reward, condition 3
+df3_ef <- tibble("turn" = 1:1000)
+
+for(i in 1:100){
+  df3_ef <- cbind(df3_ef,cond3[[2]][,2,i])
+}
+
+df3_re <- tibble("turn" = 1:1000)
+
+for(i in 1:100){
+  df3_re <- cbind(df3_re,cond3[[2]][,3,i])
+}
+
+df3_av <- tibble("turn" = 1:1000, "effort" = rowMeans(df3_ef[,2:101]), "reward" = rowMeans(df3_re[,2:101]), "breakdown" = as.factor(cond3[[1]][,4]$breakdown))
+
+df3_wide_av <- gather(df3_av, key = "variable", value = "score", reward, effort)
+
+cond3_av <- ggplot(df3_wide_av, aes(x = turn, y = log(score), color = variable)) + geom_line(size = 1) + geom_vline(data = df3_wide_av %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+cond3_av
+
+# Time series plot, difference between effort and reward, condition 4
+df4_ef <- tibble("turn" = 1:1000)
+
+for(i in 1:100){
+  df4_ef <- cbind(df4_ef,cond4[[2]][,2,i])
+}
+
+df4_re <- tibble("turn" = 1:1000)
+
+for(i in 1:100){
+  df4_re <- cbind(df4_re,cond4[[2]][,3,i])
+}
+
+df4_av <- tibble("turn" = 1:1000, "effort" = rowMeans(df4_ef[,2:101]), "reward" = rowMeans(df4_re[,2:101]), "breakdown" = as.factor(cond4[[1]][,4]$breakdown))
+
+df4_wide_av <- gather(df4_av, key = "variable", value = "score", reward, effort)
+
+cond4_av <- ggplot(df4_wide_av, aes(x = turn, y = log(score), color = variable)) + geom_line(size = 1) + geom_vline(data = df4_wide_av %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+cond4_av
 
 # Average reward vs. average effort
 re <- tibble("agent_1_re" = twodf[[2]][, 3, 1], "agent_2_re" = twodf[[2]][, 3, 2], "agent_3_re" = twodf[[2]][, 3, 3], "agent_4_re" = twodf[[2]][, 3, 4], "agent_5_re" = twodf[[2]][, 3, 5]) 
@@ -368,33 +464,28 @@ df_av <- tibble("turn" = 1:100, "effort" = rowMeans(ef), "reward" = rowMeans(re)
 
 df_wide_av <- gather(df_av, key = "variable", value = "score", reward, effort)
 
-ggplot(df_wide_av, aes(x = turn, y = log(score), color = variable)) + geom_line(size = 1) + geom_vline(data = df_wide_av %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+ggplot(df_wide_av, aes(x = turn, y = score, color = variable)) + geom_line(size = 1) + geom_vline(data = df_wide_av %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
 
-# Numerical difference between effort and reward
-df_num <- tibble("turn" = 1:100, "agent_1_re" = twodf[[2]][, 3, 1], "agent_2_re" = twodf[[2]][, 3, 2], "agent_3_re" = twodf[[2]][, 3, 3], "agent_4_re" = twodf[[2]][, 3, 4], "agent_5_re" = twodf[[2]][, 3, 5],"agent_1_ef" = twodf[[2]][, 2, 1], "agent_2_ef" = twodf[[2]][, 2, 2], "agent_3_ef" = twodf[[2]][, 2, 3],  "agent_4_ef" = twodf[[2]][, 2, 4], "agent_5_ef" = twodf[[2]][, 2, 5], "breakdown" = as.factor(twodf[[1]][,4]$breakdown)) %>% mutate("agent_1" = agent_1_ef - agent_1_re, "agent_2" = agent_2_ef - agent_2_re, "agent_3" = agent_3_ef - agent_3_re, "agent_4" = agent_4_ef - agent_4_re, "agent_5" = agent_5_ef - agent_5_re) %>% select(turn, agent_1, agent_2, agent_3, agent_4, agent_5, breakdown)
+# Bar-plot, average strain 
 
-df_wide_num <- gather(df_num, key = "agent", value = "difference", agent_1:agent_5)
+all_strain <- tibble("c1" = inv.logit(cond1[[2]][,5,]), "c2" = inv.logit(cond2[[2]][,5,]), "c3" = inv.logit(cond3[[2]][,5,]), "c4" = inv.logit(cond4[[2]][,5,]))
 
-ggplot(df_wide_num, aes(x = turn, y = difference, color = agent)) + geom_line(size = 1) + geom_vline(data = df_wide_num %>% select(turn, breakdown) %>%  filter(breakdown == 1), aes(xintercept = turn), alpha = 0.5)
+all_strain_wide <- gather(all_strain, key = "condition", value = "strain", c1, c2, c3, c4)
 
-inv.logit(0.20)
+all_strain_wide$condition <- as.factor(all_strain_wide$condition)
+
+bar_strain <- ggplot(all_strain_wide, aes(x = condition, y = strain, fill = "red")) + geom_bar(stat = "summary", fun.y=mean) + geom_errorbar(stat = "summary", fun.data=mean_cl_boot, width = 0.2) + labs(y = "Strain", x = "Condition", title = "strain")  + theme(plot.title = element_text(hjust = 0.5)) + guides(fill=FALSE)
+bar_strain
+
+# Bar-plot,breakdowns  
+
+all_break <- tibble("c1" = cond1[[1]][,4]$breakdown, "c2" = cond2[[1]][,4]$breakdown, "c3" = cond3[[1]][,4]$breakdown, "c4" = cond4[[1]][,4]$breakdown)
+
+all_break_wide <- gather(all_break, key = "condition", value = "breakdown", c1, c2, c3, c4)
+
+bar_break <- ggplot(all_break_wide, aes(x = condition)) + geom_bar(data = all_break_wide %>% filter(breakdown == 1)) + labs(y = "Nr. of breakdowns", x = "Condition", title = "Project breakdown")  + theme(plot.title = element_text(hjust = 0.5)) + guides(fill=FALSE)
+bar_break
+
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
