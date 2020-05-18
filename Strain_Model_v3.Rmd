@@ -241,25 +241,12 @@ Simulation <- function(n_turns, n_agent, threshold, len, penalty, no, pos, neg, 
 The model has 4 different conditions - each one is run with it's own iteration of the Simulation function.
 
 ```{r}
-# Condition 1: Short intervals, low rate of change in scope
+# Condition 1: short intervals, high rate of change in scope SI-FC
 cond1 <- Simulation(n_turns = 1000,
                     n_agent = 100,
-                    threshold = 5,
+                    threshold = 3,
                     len = 5, # the parameter that decides the interval condition.
-                    penalty = 0.05,
-                    no = 0.8, #---|These three parameters decide the scope condition.
-                    pos = 0.1, #--|
-                    neg = 0.1, #--|
-                    beta = 0.5,
-                    odds = 1.49,
-                    s_beta = -0.1)
-
-# Condition 2: Short intervals, high rate of change in scope
-cond2 <- Simulation(n_turns = 1000,
-                    n_agent = 100,
-                    threshold = 5,
-                    len = 5, # the parameter that decides the interval condition.
-                    penalty = 0.05,
+                    penalty = 0.1,
                     no = 0.6, #---|These three parameters decide the scope condition.
                     pos = 0.2, #--|
                     neg = 0.2, #--|
@@ -267,34 +254,46 @@ cond2 <- Simulation(n_turns = 1000,
                     odds = 1.49,
                     s_beta = -0.1)
 
-# Condition 3: long intervals, low rate of change in scope
+# Condition 2: Short intervals, slow rate of change in scope SI-SC
+cond2 <- Simulation(n_turns = 1000,
+                    n_agent = 100,
+                    threshold = 3,
+                    len = 5, # the parameter that decides the interval condition.
+                    penalty = 0.1,
+                    no = 0.8, #---|These three parameters decide the scope condition.
+                    pos = 0.1, #--|
+                    neg = 0.1, #--|
+                    beta = 0.5,
+                    odds = 1.49,
+                    s_beta = -0.1)
+
+# Condition 3: long intervals, high rate of change in scope LI-FC
 cond3 <- Simulation(n_turns = 1000,
                     n_agent = 100,
                     threshold = 3,
                     len = 20, # the parameter that decides the interval condition.
-                    penalty = 0.05,
-                    no = 0.8, #---|These three parameters decide the scope condition.
-                    pos = 0.1, #--|
-                    neg = 0.1, #--|
+                    penalty = 0.1,
+                    no = 0.6, #---|These three parameters decide the scope condition.
+                    pos = 0.2, #--|
+                    neg = 0.2, #--|
                     beta = 0.5,
                     odds = 1.49,
                     s_beta = -0.1)
 
-# Condition 4: long intervals, high rate of change in scope
+# Condition 4: long intervals, low rate of change in scope LI-SC
 cond4 <- Simulation(n_turns = 1000,
                     n_agent = 100,
                     threshold = 3,
                     len = 20, # the parameter that decides the interval condition.
-                    penalty = 0.05,
-                    no = 0.6, #---|These three parameters decide the scope condition.
-                    pos = 0.2, #--|
-                    neg = 0.2, #--|
+                    penalty = 0.1,
+                    no = 0.8, #---|These three parameters decide the scope condition.
+                    pos = 0.1, #--|
+                    neg = 0.1, #--|
                     beta = 0.5,
                     odds = 1.49,
                     s_beta = -0.1)
 
 ```
-
 
 ## Plots
 The code for the plots used in the prose for the exam assigment can be found here: 
@@ -495,6 +494,11 @@ bar_break <- ggplot(all_break_wide, aes(x = condition)) + geom_bar(data = all_br
 bar_break
 
 ```
+
+## Descriptive stats
+For reporting purposes.
+
+
 
 ```{r}
 # More testing 
