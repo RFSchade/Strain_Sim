@@ -246,52 +246,52 @@ cond1 <- Simulation(n_turns = 1000,
                     n_agent = 100,
                     threshold = 3,
                     len = 5, # the parameter that decides the interval condition.
-                    penalty = 0.1,
+                    penalty = 0.2,
                     no = 0.6, #---|These three parameters decide the scope condition.
                     pos = 0.2, #--|
                     neg = 0.2, #--|
                     beta = 0.5,
                     odds = 1.49,
-                    s_beta = -0.1)
+                    s_beta = 0)
 
 # Condition 2: Short intervals, slow rate of change in scope SI-SC
 cond2 <- Simulation(n_turns = 1000,
                     n_agent = 100,
                     threshold = 3,
                     len = 5, # the parameter that decides the interval condition.
-                    penalty = 0.1,
+                    penalty = 0.2,
                     no = 0.8, #---|These three parameters decide the scope condition.
                     pos = 0.1, #--|
                     neg = 0.1, #--|
                     beta = 0.5,
                     odds = 1.49,
-                    s_beta = -0.1)
+                    s_beta = 0)
 
 # Condition 3: long intervals, high rate of change in scope LI-FC
 cond3 <- Simulation(n_turns = 1000,
                     n_agent = 100,
                     threshold = 3,
                     len = 20, # the parameter that decides the interval condition.
-                    penalty = 0.1,
+                    penalty = 0.2,
                     no = 0.6, #---|These three parameters decide the scope condition.
                     pos = 0.2, #--|
                     neg = 0.2, #--|
                     beta = 0.5,
                     odds = 1.49,
-                    s_beta = -0.1)
+                    s_beta = 0)
 
 # Condition 4: long intervals, low rate of change in scope LI-SC
 cond4 <- Simulation(n_turns = 1000,
                     n_agent = 100,
                     threshold = 3,
                     len = 20, # the parameter that decides the interval condition.
-                    penalty = 0.1,
+                    penalty = 0.2,
                     no = 0.8, #---|These three parameters decide the scope condition.
                     pos = 0.1, #--|
                     neg = 0.1, #--|
                     beta = 0.5,
                     odds = 1.49,
-                    s_beta = -0.1)
+                    s_beta = 0)
 
 ```
 
@@ -497,8 +497,68 @@ bar_break
 
 ## Descriptive stats
 For reporting purposes.
+```{r}
+# SI-FC
+# For the entire run of the model
+range(df1_wide$strain) # min = 0.0007077069, max = 0.9801177435
+mean(df1_wide$strain) # mean = 0.2157053
+sd(df1_wide$strain) # standard deviation = 0.1480702
+#
+meansd1 <- 1:100
+for(i in 1:100){
+  meansd1[i] <- sd(inv.logit(cond1[[2]][,5,i]))
+}
+meansd1 <- tibble("agent" = 1:100, "sd" = meansd1)
+mean(meansd1$sd) # mean standard deviation is0.05786204
+sd(meansd1$sd) # The standard deviation of the mean standard deviation is 0.03439661
+BREAK <-  df1 %>% filter(breakdown == 1) # dataframe has 14 rows, this condition has 14 breakdowns 
 
+# SI-SC
+# For the entire run of the model
+range(df2_wide$strain) # min = 0.0005859727, max = 0.9394965044
+mean(df2_wide$strain) # mean = 0.2157053
+sd(df2_wide$strain) # standard deviation = 0.1480702
+#
+meansd2 <- 1:100
+for(i in 1:100){
+  meansd2[i] <- sd(inv.logit(cond2[[2]][,5,i]))
+}
+meansd2 <- tibble("agent" = 1:100, "sd" = meansd2)
+mean(meansd2$sd) # mean standard deviation is 0.06353367
+sd(meansd2$sd) # The standard deviation of the mean standard deviation is 0.03439661
+BREAK <-  df2 %>% filter(breakdown == 1) # dataframe has 10 rows, this condition has 10 breakdowns 
 
+# LI-FC
+# For the entire run of the model
+range(df3_wide$strain) # min = 0.0005859727, max = 0.9394965044
+mean(df3_wide$strain) # mean = 0.2157053
+sd(df3_wide$strain) # standard deviation = 0.1480702
+#
+meansd3 <- 1:100
+for(i in 1:100){
+  meansd3[i] <- sd(inv.logit(cond3[[2]][,5,i]))
+}
+meansd3 <- tibble("agent" = 1:100, "sd" = meansd3)
+mean(meansd3$sd) # mean standard deviation is 0.06353367
+sd(meansd3$sd) # The standard deviation of the mean standard deviation is 0.03439661
+BREAK <-  df3 %>% filter(breakdown == 1) # dataframe has 10 rows, this condition has 10 breakdowns 
+
+# LI-SC
+# For the entire run of the model
+range(df4_wide$strain) # min = 0.0005859727, max = 0.9394965044
+mean(df4_wide$strain) # mean = 0.2157053
+sd(df4_wide$strain) # standard deviation = 0.1480702
+#
+meansd4 <- 1:100
+for(i in 1:100){
+  meansd4[i] <- sd(inv.logit(cond4[[2]][,5,i]))
+}
+meansd4 <- tibble("agent" = 1:100, "sd" = meansd4)
+mean(meansd4$sd) # mean standard deviation is 0.06353367
+sd(meansd4$sd) # The standard deviation of the mean standard deviation is 0.03439661
+BREAK <-  df4 %>% filter(breakdown == 1) # dataframe has 10 rows, this condition has 10 breakdowns
+
+```
 
 ```{r}
 # More testing 
